@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,21 @@ import {
   StyleSheet,
   SafeAreaView,
   StatusBar,
+  Modal,
+  Platform,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import { Picker } from '@react-native-picker/picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
+// No CropDetails import here because it's now a separate screen
 
 const MyCrops = () => {
   const router = useRouter();
 
-  const crops = [
+  // Main crops state, initialized with your crops
+  const [crops, setCrops] = useState([
     {
       id: 1,
       name: 'Tomato',
@@ -53,14 +60,88 @@ const MyCrops = () => {
       progress: 100,
       progressColor: '#4CAF50',
       planted: 'February 10, 2024',
+      expectedHarvest: 'May 5, 2024',
       readyForHarvest: true,
       icon: '🌽',
       needsAttention: false,
     },
-  ];
+  ]);
 
+  const [modalVisible, setModalVisible] = useState(false);
+
+  // Form states for adding new crop
+  const [newCropName, setNewCropName] = useState('wheat');
+  const [newSowingDate, setNewSowingDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const cropIcons = {
+    wheat: '🌾',
+    maize: '🌽',
+    potato: '🥔',
+    onion: '🧅',
+    rice: '🍚',
+  };
+
+  const cropVarieties = {
+    wheat: 'Common Wheat',
+    maize: 'Sweet Corn',
+    potato: 'Russet',
+    onion: 'Yellow Onion',
+    rice: 'Basmati',
+  };
+
+  const onChangeDate = (event, selectedDate) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setNewSowingDate(selectedDate);
+    }
+  };
+
+  const formatDate = (date) => {
+    if (!date) return '';
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    return date.toLocaleDateString(undefined, options);
+  };
+
+  const addCrop = () => {
+    if (!newCropName || !newSowingDate) {
+      alert('Please select a crop and a sowing date');
+      return;
+    }
+
+    const newId = crops.length ? crops[crops.length - 1].id + 1 : 1;
+
+    const newCrop = {
+      id: newId,
+      name: newCropName.charAt(0).toUpperCase() + newCropName.slice(1),
+      variety: cropVarieties[newCropName] || '',
+      status: 'Planted',
+      statusColor: '#2196F3',
+      progress: 0,
+      progressColor: '#2196F3',
+      planted: formatDate(newSowingDate),
+      icon: cropIcons[newCropName] || '🌱',
+      needsAttention: false,
+    };
+
+    setCrops((prev) => [...prev, newCrop]);
+    setModalVisible(false);
+    setNewCropName('wheat');
+    setNewSowingDate(new Date());
+  };
+
+  // Crop Card component: On press, navigate to CropDetails screen passing crop data as JSON string
   const CropCard = ({ crop }) => (
-    <TouchableOpacity style={styles.cropCard} activeOpacity={0.7}>
+    <TouchableOpacity
+      style={styles.cropCard}
+      activeOpacity={0.7}
+      onPress={() =>
+        router.push({
+          pathname: '/crop-details',
+          params: { crop: JSON.stringify(crop) },
+        })
+      }
+    >
       <View style={styles.cropHeader}>
         <View style={styles.cropTitleRow}>
           <Text style={styles.cropIcon}>{crop.icon}</Text>
@@ -84,14 +165,11 @@ const MyCrops = () => {
 
       <View style={styles.progressBarContainer}>
         <View style={styles.progressBarBackground}>
-          <View 
+          <View
             style={[
-              styles.progressBarFill, 
-              { 
-                width: `${crop.progress}%`,
-                backgroundColor: crop.progressColor 
-              }
-            ]} 
+              styles.progressBarFill,
+              { width: `${crop.progress}%`, backgroundColor: crop.progressColor },
+            ]}
           />
         </View>
       </View>
@@ -147,7 +225,7 @@ const MyCrops = () => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar backgroundColor="#4CAF50" barStyle="light-content" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -157,7 +235,7 @@ const MyCrops = () => {
           <Text style={styles.headerTitle}>My Crops</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.headerButton}>
+          <TouchableOpacity style={styles.headerButton} onPress={() => setModalVisible(true)}>
             <Ionicons name="add" size={24} color="white" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.headerButton}>
@@ -169,7 +247,7 @@ const MyCrops = () => {
       {/* Tab Navigation */}
       <View style={styles.tabContainer}>
         <TouchableOpacity style={styles.tabCard}>
-          <Text style={[styles.tabCount, styles.activeTabCount]}>3</Text>
+          <Text style={[styles.tabCount, styles.activeTabCount]}>{crops.length}</Text>
           <Text style={[styles.tabText, styles.activeTabText]}>Active Crops</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.tabCard}>
@@ -183,7 +261,7 @@ const MyCrops = () => {
       </View>
 
       {/* Add New Crop Banner */}
-      <TouchableOpacity style={styles.addCropBanner}>
+      <TouchableOpacity style={styles.addCropBanner} onPress={() => setModalVisible(true)}>
         <View style={styles.addCropContent}>
           <Ionicons name="add-circle" size={24} color="#4CAF50" />
           <View style={styles.addCropText}>
@@ -228,6 +306,64 @@ const MyCrops = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Modal for Adding New Crop */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackground}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Add New Crop</Text>
+
+            <Text style={styles.label}>Select Crop</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={newCropName}
+                onValueChange={(itemValue) => setNewCropName(itemValue)}
+              >
+                <Picker.Item label="Wheat" value="wheat" />
+                <Picker.Item label="Maize" value="maize" />
+                <Picker.Item label="Potato" value="potato" />
+                <Picker.Item label="Onion" value="onion" />
+                <Picker.Item label="Rice" value="rice" />
+              </Picker>
+            </View>
+
+            <Text style={styles.label}>Select Sowing Date</Text>
+            <TouchableOpacity
+              style={styles.datePickerButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={styles.datePickerText}>{formatDate(newSowingDate)}</Text>
+              <Ionicons name="calendar" size={20} color="#4CAF50" />
+            </TouchableOpacity>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={newSowingDate}
+                mode="date"
+                display="default"
+                onChange={onChangeDate}
+                maximumDate={new Date()}
+              />
+            )}
+
+            <TouchableOpacity style={styles.addCropButton} onPress={addCrop}>
+              <Text style={styles.addCropButtonText}>Add Crop</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.addCropButton, styles.cancelButton]}
+              onPress={() => setModalVisible(false)}
+            >
+              <Text style={[styles.addCropButtonText, { color: '#4CAF50' }]}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -236,6 +372,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingTop: 25,
   },
   header: {
     backgroundColor: '#4CAF50',
@@ -513,6 +650,72 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#666',
     marginTop: 4,
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContainer: {
+    width: '85%',
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    marginBottom: 16,
+    overflow: 'hidden',
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    marginBottom: 20,
+  },
+  datePickerText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  addCropButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  addCropButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  cancelButton: {
+    backgroundColor: '#f0f0f0',
   },
 });
 
