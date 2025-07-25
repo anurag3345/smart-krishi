@@ -1,57 +1,153 @@
+import React, { useContext } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { profileInfo, profileOptions } from '../../constants/data';
+import {
+  Image,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ScrollView,
+  Alert,
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { AuthContext } from '../../context/AuthContext';
+import { profileInfo, profileOptions } from '../../constants/data'; // Adjust path as needed
 
-export default function ProfileScreen() {
+
+export default function Profile() {
+  const { signOut } = useContext(AuthContext);
+  const router = useRouter();
+
+  const handleOptionPress = (optionId) => {
+    if (optionId === '7') {
+      // Logout confirmation
+      Alert.alert(
+        'Logout',
+        'Are you sure you want to logout?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Logout',
+            style: 'destructive',
+            onPress: async () => {
+              await signOut();
+              router.replace('/(auth)/login');
+            },
+          },
+        ],
+        { cancelable: true }
+      );
+    } else {
+      // You can handle other options here, for now just show alert
+      Alert.alert('Coming Soon', `You clicked ${profileOptions.find(o => o.id === optionId)?.label}`);
+    }
+  };
+
   return (
     <View style={styles.container}>
-      <Image source={{ uri: profileInfo.avatar }} style={styles.avatar} />
-      <Text style={styles.name}>{profileInfo.name}</Text>
+      <View style={styles.header}>
+        <Image source={profileInfo.avatar} style={styles.avatar} />
+        <Text style={styles.name}>{profileInfo.name}</Text>
+      </View>
 
-      <View style={styles.section}>
+      <ScrollView
+        style={styles.optionsContainer}
+        contentContainerStyle={{ paddingVertical: 10 }}
+      >
         {profileOptions.map((option) => (
-          <TouchableOpacity key={option.id} style={styles.item}>
-            <Ionicons name={option.icon} size={20} color="#333" style={styles.icon} />
-            <Text style={styles.label}>{option.label}</Text>
+          <TouchableOpacity
+            key={option.id}
+            style={styles.optionItem}
+            activeOpacity={0.7}
+            onPress={() => handleOptionPress(option.id)}
+          >
+            <View style={styles.iconWrapper}>
+              <Ionicons name={option.icon} size={24} color="#4CAF50" />
+            </View>
+            <Text style={styles.optionLabel}>{option.label}</Text>
+            <Ionicons
+              name="chevron-forward"
+              size={20}
+              color="#999"
+              style={styles.forwardIcon}
+            />
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-     flex: 1, 
-     alignItems: 'center',
-     backgroundColor: '#fff' },
+    flex: 1,
+    backgroundColor: '#f7fdf7',
+  },
+  header: {
+    alignItems: 'center',
+    paddingVertical: 30,
+    backgroundColor: '#e8f5e9',
+    borderBottomWidth: 1,
+    borderBottomColor: '#c8e6c9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 3,
+  },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 60,
-    marginBottom: 10,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    borderWidth: 3,
+    borderColor: '#4caf50',
+    marginBottom: 12,
+    backgroundColor: '#fff',
+    shadowColor: '#4caf50',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 5,
   },
   name: {
-    fontSize: 20,
+    fontSize: 26,
     fontWeight: 'bold',
-    marginBottom: 20,
+    color: '#2e7d32',
   },
-  section: {
-    width: '90%',
-    marginTop: 10,
+  optionsContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
   },
-  item: {
+  optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    backgroundColor: '#f1f8e9',
-    borderRadius: 10,
-    marginBottom: 10,
+    backgroundColor: '#ffffff',
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  icon: {
-    marginRight: 12,
+  iconWrapper: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#e0f2f1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
   },
-  label: {
-    fontSize: 16,
+  optionLabel: {
+    flex: 1,
+    fontSize: 17,
+    color: '#333',
+    fontWeight: '500',
+  },
+  forwardIcon: {
+    marginLeft: 8,
   },
 });
