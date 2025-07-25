@@ -1,14 +1,27 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 
 export default function FeatureGrid({ items }) {
+  const router = useRouter();
+
   return (
     <View style={styles.grid}>
       {items.map((item) => (
-        <View key={item.id} style={[styles.item, { backgroundColor: item.bgColor }]}>
+        <TouchableOpacity
+          key={item.id}
+          style={[styles.item, { backgroundColor: item.bgColor }]}
+          onPress={() => {
+            if (item.title === 'My Crops') {
+              router.push('/my-crops'); 
+            } else if (item.title === 'Crop Health'){
+              router.push('/crop-health')
+            }
+          }}
+        >
           <Ionicons name={item.icon} size={28} color="#333" />
           <Text style={styles.label}>{item.title}</Text>
-        </View>
+        </TouchableOpacity>
       ))}
     </View>
   );
@@ -22,15 +35,17 @@ const styles = StyleSheet.create({
     paddingBottom: 10,
   },
   item: {
-    width: '48%', // roughly half minus margin
+    width: '48%',
     margin: '1%',
     padding: 16,
     borderRadius: 10,
     alignItems: 'center',
+    elevation: 3,
   },
   label: {
     marginTop: 8,
     fontSize: 14,
     fontWeight: '600',
+    color: '#333',
   },
 });
