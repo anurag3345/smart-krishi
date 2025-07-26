@@ -9,12 +9,60 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  StatusBar,
+  SafeAreaView,
 } from "react-native";
 import { FontAwesome5 } from "@expo/vector-icons";
 import CropForm from "../components/CropForm"; // Adjust path accordingly
-import OrderCrop from "../components/OrderCrop"; // Import new OrderCrop component
+import OrderProduct from "../components/OrderProduct"; // Renamed from OrderCrop
+import { useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../context/AuthContext";
 import FavoriteFarmers from "../components/FavoriteFarmers";
+
+// Crop images mapping
+const cropImages = {
+  // Vegetables
+  "carrots": require("../assets/images/carrot.jpg"),
+  "spinach": require("../assets/images/spinach.jpg"),
+  "onions": require("../assets/crops/onion.jpg"),
+  "potatoes": require("../assets/crops/potato.jpg"),
+  "beans": require("../assets/images/beans.jpg"),
+  
+  // Fruits
+  "corn": require("../assets/images/corn.jpg"),
+  "wheat": require("../assets/crops/wheat.jpg"),
+  "rice": require("../assets/crops/rice.jpg"),
+  "apples": require("../assets/images/apple.jpg"),
+  "bananas": require("../assets/images/banana.jpg"),
+  
+  // Grains
+  "barley": require("../assets/images/barley.jpg"),
+  "oats": require("../assets/images/oats.jpg"),
+  
+  // Default fallback
+  "default": require("../assets/crops/wheat.jpg"),
+};
+
+// Helper function to get crop image
+const getCropImage = (cropName) => {
+  if (!cropName) return cropImages.default;
+  
+  // Convert crop name to lowercase and remove spaces for matching
+  const normalizedName = cropName.toLowerCase().replace(/\s+/g, '').replace(/[^a-zA-Z]/g, '');
+  
+  // Try to find exact match first
+  if (cropImages[normalizedName]) {
+    return cropImages[normalizedName];
+  }
+  
+  // Try partial matches
+  const cropKeys = Object.keys(cropImages);
+  const partialMatch = cropKeys.find(key => 
+    normalizedName.includes(key) || key.includes(normalizedName)
+  );
+  
+  return partialMatch ? cropImages[partialMatch] : cropImages.default;
+};
 
 const activeListing = {
   name: "Fresh Tomatoes",
@@ -23,41 +71,43 @@ const activeListing = {
   views: 12,
   inquiries: 3,
 };
+
 const initialRecentProducts = [
   {
     id: "p1",
     category: "Vegetables",
-    icon: "carrot",
     name: "Organic Carrots",
     desc: "Fresh from farm",
     price: "₹35/kg",
-    available: "25",
+    available: 25,
+    unit: "kg",
     distance: "2.5 km",
     heart: false,
   },
   {
     id: "p2",
     category: "Vegetables",
-    icon: "leaf",
     name: "Fresh Spinach",
     desc: "Pesticide-free",
     price: "₹25/kg",
-    available: "15",
+    available: 15,
+    unit: "kg",
     distance: "1.2 km",
     heart: true,
   },
   {
     id: "p3",
     category: "Fruits",
-    icon: "seedling",
     name: "Sweet Corn",
     desc: "Freshly harvested",
     price: "₹40/kg",
-    available: "30",
+    available: 30,
+    unit: "kg",
     distance: "3.1 km",
     heart: false,
   },
 ];
+
 const messages = [
   {
     id: "m1",
@@ -82,14 +132,15 @@ function Chip({ label, active, onPress }) {
   );
 }
 
-export default function RentCrop() {
+export default function RentCrop({ navigation }) {
    const {user} = useContext(AuthContext);
   const [products, setProducts] = useState(initialRecentProducts);
   const [searchText, setSearchText] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("All");
   const [modalVisible, setModalVisible] = useState(false);
+  const navigate = useNavigation();
 
-  // State for OrderCrop popup
+  // State for OrderProduct popup
   const [orderModalVisible, setOrderModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
@@ -122,18 +173,11 @@ export default function RentCrop() {
       {
         id: `p${prev.length + 1}`,
         category: formData.category,
-        icon:
-          formData.imageUri && formData.imageUri.length > 0
-            ? formData.imageUri
-            : formData.category === "Vegetables"
-            ? "carrot"
-            : formData.category === "Fruits"
-            ? "seedling"
-            : "leaf",
         name: formData.productName,
         desc: formData.description || "",
         price: `₹${formData.pricePerUnit}/${formData.unit}`,
-        available: formData.quantity, // pass quantity as number/string without unit for checking
+        available: parseInt(formData.quantity) || 0,
+        unit: formData.unit,
         distance: "0 km",
         heart: false,
       },
@@ -153,38 +197,73 @@ export default function RentCrop() {
     setSelectedProduct(null);
   };
 
+  // Handle successful order - decrease quantity
+  const handleOrderSuccess = (productId, orderedQuantity) => {
+    setProducts((prev) =>
+      prev.map((item) =>
+        item.id === productId
+          ? { ...item, available: Math.max(0, item.available - orderedQuantity) }
+          : item
+      )
+    );
+    setOrderModalVisible(false);
+    setSelectedProduct(null);
+  };
+
   return (
-    <>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      
+      {/* Top Bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigate('/(tabs)/home')}
+        >
+          {/* <FontAwesome5 name="arrow-left" size={20} color="#333" /> */}
+        </TouchableOpacity>
+        <Text style={styles.topBarTitle}>Agricultural Market</Text>
+        <TouchableOpacity style={styles.menuButton}>
+          <FontAwesome5 name="ellipsis-v" size={20} color="#333" />
+        </TouchableOpacity>
+      </View>
+
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
       >
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
+        <ScrollView 
+          keyboardShouldPersistTaps="handled" 
+          contentContainerStyle={{ paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Search Bar */}
-          <View style={styles.searchRow}>
-            <FontAwesome5
-              name="search"
-              size={16}
-              color="#8e8e8e"
-              style={styles.iconLeft}
-            />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search products..."
-              placeholderTextColor="#bdbdbd"
-              value={searchText}
-              onChangeText={setSearchText}
-              autoCorrect={false}
-              autoCapitalize="none"
-              clearButtonMode="while-editing"
-            />
-            <FontAwesome5
-              name="sliders-h"
-              size={16}
-              color="#8e8e8e"
-              style={styles.iconRight}
-            />
+          <View style={styles.searchContainer}>
+            <View style={styles.searchRow}>
+              <FontAwesome5
+                name="search"
+                size={16}
+                color="#8e8e8e"
+                style={styles.iconLeft}
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search fresh produce..."
+                placeholderTextColor="#bdbdbd"
+                value={searchText}
+                onChangeText={setSearchText}
+                autoCorrect={false}
+                autoCapitalize="none"
+                clearButtonMode="while-editing"
+              />
+              <FontAwesome5
+                name="sliders-h"
+                size={16}
+                color="#8e8e8e"
+                style={styles.iconRight}
+              />
+            </View>
           </View>
 
           {/* Filter Chips */}
@@ -192,7 +271,7 @@ export default function RentCrop() {
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.chipScroll}
-            contentContainerStyle={{ paddingLeft: 12, paddingRight: 16 }}
+            contentContainerStyle={{ paddingLeft: 16, paddingRight: 16 }}
           >
             {filterOptions.map((label) => (
               <Chip
@@ -209,19 +288,21 @@ export default function RentCrop() {
           {user?.role === 'farmer' && <Text style={styles.sectionTitle}>My Active Listings</Text>}
 
           {user?.role === 'farmer' &&           <View style={styles.listingCard}>
-            <FontAwesome5
-              name="pepper-hot"
-              size={22}
-              color="#ea6d3c"
-              style={{ marginRight: 12 }}
-            />
+            <View style={styles.listingIconContainer}>
+             <Image
+  source={require('../assets/images/tomato.jpg')}
+  style={{ width: 24, height: 24 }}
+/>
+            </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.listingTitle}>{activeListing.name}</Text>
               <Text style={styles.listingSub}>
                 {activeListing.price} • {activeListing.available} available
               </Text>
               <View style={styles.metaRow}>
-                <Text style={styles.active}>Active</Text>
+                <View style={styles.activeStatus}>
+                  <Text style={styles.activeText}>Active</Text>
+                </View>
                 <Text style={styles.metaInfo}>
                   {activeListing.views} views • {activeListing.inquiries} inquiries
                 </Text>
@@ -235,18 +316,18 @@ export default function RentCrop() {
             style={styles.listProductBtn}
             onPress={() => setModalVisible(true)}
           >
-            <Text style={styles.listProductText}>List Your Product</Text>
             <FontAwesome5
               name="plus"
-              size={16}
+              size={18}
               color="#fff"
-              style={{ marginLeft: 8 }}
+              style={{ marginRight: 10 }}
             />
+            <Text style={styles.listProductText}>List Your Product</Text>
           </TouchableOpacity>}
 
           {/* Recent Products */}
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Recent Products</Text>
+            <Text style={styles.sectionTitle}>Fresh Produce Available</Text>
             <TouchableOpacity>
               <Text style={styles.viewAll}>View All</Text>
             </TouchableOpacity>
@@ -255,50 +336,60 @@ export default function RentCrop() {
           {sortedProducts.length > 0 ? (
             sortedProducts.map((item) => (
               <View style={styles.productCard} key={item.id}>
-                {item.icon && (item.icon.startsWith("http") || item.icon.startsWith("file://")) ? (
+                <View style={styles.productIconContainer}>
                   <Image
-                    source={{ uri: item.icon }}
-                    style={{ width: 28, height: 28, borderRadius: 5, marginRight: 12 }}
+                    source={getCropImage(item.name)}
+                    style={styles.productImage}
+                    resizeMode="cover"
                   />
-                ) : (
-                  <FontAwesome5
-                    name={item.icon || "seedling"}
-                    size={22}
-                    color="#a5d7a7"
-                    style={{ marginRight: 12 }}
-                  />
-                )}
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.productTitle}>{item.name}</Text>
                   <Text style={styles.productSub}>{item.desc}</Text>
                   <Text style={styles.productMeta}>
-                    {item.price} {item.available} available
+                    {item.price} • {item.available}{item.unit} available
                   </Text>
-                  <Text style={styles.distance}>{item.distance} away</Text>
+                  <View style={styles.distanceRow}>
+                    <FontAwesome5 name="map-marker-alt" size={12} color="#999" />
+                    <Text style={styles.distance}>{item.distance} away</Text>
+                  </View>
                 </View>
-                <TouchableOpacity
-                  onPress={() => toggleHeart(item.id)}
-                  style={{ paddingHorizontal: 8 }}
-                >
-                  <FontAwesome5
-                    name="heart"
-                    size={18}
-                    color={item.heart ? "#e74c3c" : "#bbb"}
-                    solid={item.heart}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.contactBtn}
-                  onPress={() => onOrderPress(item)}
-                >
-                  <Text style={{ color: "#fff", fontSize: 13 }}>Order Now</Text>
-                </TouchableOpacity>
+                <View style={styles.productActions}>
+                  <TouchableOpacity
+                    onPress={() => toggleHeart(item.id)}
+                    style={styles.heartButton}
+                  >
+                    <FontAwesome5
+                      name="heart"
+                      size={18}
+                      color={item.heart ? "#e74c3c" : "#ddd"}
+                      solid={item.heart}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.buyButton,
+                      item.available <= 0 && styles.buyButtonDisabled
+                    ]}
+                    onPress={() => onOrderPress(item)}
+                    disabled={item.available <= 0}
+                  >
+                    <Text style={[
+                      styles.buyButtonText,
+                      item.available <= 0 && styles.buyButtonTextDisabled
+                    ]}>
+                      {item.available <= 0 ? "Out of Stock" : "Buy Now"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))
           ) : (
-            <Text style={{ textAlign: "center", marginVertical: 16, color: "#999" }}>
-              No products found
-            </Text>
+            <View style={styles.emptyState}>
+              <FontAwesome5 name="seedling" size={48} color="#ddd" />
+              <Text style={styles.emptyStateText}>No products found</Text>
+              <Text style={styles.emptyStateSubtext}>Try adjusting your search or filters</Text>
+            </View>
           )}
 
 
@@ -308,19 +399,23 @@ export default function RentCrop() {
           {/* Recent Messages */}
           <Text style={styles.sectionTitle}>Recent Messages</Text>
           {messages.map((msg) => (
-            <View key={msg.id} style={styles.msgRow}>
-              <FontAwesome5
-                name="user-circle"
-                size={24}
-                color="#bdbdbd"
-                style={{ marginRight: 10 }}
-              />
+            <TouchableOpacity key={msg.id} style={styles.msgRow}>
+              <View style={styles.avatarContainer}>
+                <FontAwesome5
+                  name="user"
+                  size={16}
+                  color="#fff"
+                />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.msgName}>{msg.name}</Text>
                 <Text style={styles.msgTxt}>{msg.msg}</Text>
               </View>
-              <Text style={styles.msgTime}>{msg.time}</Text>
-            </View>
+              <View style={styles.msgTimeContainer}>
+                <Text style={styles.msgTime}>{msg.time}</Text>
+                <View style={styles.unreadIndicator} />
+              </View>
+            </TouchableOpacity>
           ))}
 
          
@@ -334,78 +429,206 @@ export default function RentCrop() {
         onSubmit={handleFormSubmit}
       />
 
-      {/* Order Crop Modal */}
-      <OrderCrop
+      {/* Order Product Modal */}
+      <OrderProduct
         visible={orderModalVisible}
         onClose={onOrderClose}
         product={selectedProduct}
+        onOrderSuccess={handleOrderSuccess}
       />
-    </>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f7f7f7", paddingTop: 20},
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  // backButton: {
+  //   width: 40,
+  //   height: 40,
+  //   borderRadius: 20,
+  //   backgroundColor: "#f8f8f8",
+  //   alignItems: "center",
+  //   justifyContent: "center",
+  // },
+  topBarTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    flex: 1,
+    textAlign: "center",
+    marginHorizontal: 16,
+  },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f8f8f8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  container: { 
+    flex: 1, 
+    backgroundColor: "#f8f9fa",
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#eee",
-    borderRadius: 10,
-    margin: 16,
-    paddingHorizontal: 10,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  iconLeft: { marginRight: 7 },
-  iconRight: { marginLeft: 7 },
-  searchInput: { flex: 1, height: 38, fontSize: 16, color: "#222" },
-  chipScroll: { marginBottom: 8 },
+  iconLeft: { marginRight: 10 },
+  iconRight: { marginLeft: 10 },
+  searchInput: { 
+    flex: 1, 
+    height: 44, 
+    fontSize: 16, 
+    color: "#333",
+  },
+  chipScroll: { 
+    marginBottom: 16,
+  },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    backgroundColor: "#ececec",
-    borderRadius: 13,
-    marginRight: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    marginRight: 10,
     alignSelf: "center",
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
-  chipActive: { backgroundColor: "#4CAF50" },
-  chipLabel: { color: "#555" },
-  chipActiveLabel: { color: "#fff" },
+  chipActive: { 
+    backgroundColor: "#4CAF50",
+    elevation: 2,
+  },
+  chipLabel: { 
+    color: "#666",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  chipActiveLabel: { 
+    color: "#fff",
+    fontWeight: "600",
+  },
   sectionTitle: {
     fontWeight: "bold",
-    fontSize: 16,
-    color: "#222",
+    fontSize: 18,
+    color: "#333",
     marginLeft: 16,
     marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   listingCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
     marginHorizontal: 16,
-    borderRadius: 12,
-    padding: 14,
-    shadowColor: "#ddd",
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
-    marginBottom: 10,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: 16,
   },
-  listingTitle: { fontSize: 15, fontWeight: "bold", color: "#333" },
-  listingSub: { color: "#888", marginBottom: 2 },
-  metaRow: { flexDirection: "row", alignItems: "center", marginTop: 2 },
-  metaInfo: { fontSize: 12, color: "#888", marginLeft: 7 },
-  active: { fontSize: 12, color: "#4CAF50", fontWeight: "bold", marginRight: 7 },
+  listingIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#4CAF50",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+  },
+  listingTitle: { 
+    fontSize: 16, 
+    fontWeight: "bold", 
+    color: "#333",
+    marginBottom: 4,
+  },
+  listingSub: { 
+    color: "#666", 
+    marginBottom: 6,
+    fontSize: 14,
+  },
+  metaRow: { 
+    flexDirection: "row", 
+    alignItems: "center",
+  },
+  activeStatus: {
+    backgroundColor: "#e8f5e8",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  activeText: {
+    fontSize: 12,
+    color: "#4CAF50",
+    fontWeight: "600",
+  },
+  metaInfo: { 
+    fontSize: 12, 
+    color: "#999",
+  },
   listProductBtn: {
     margin: 16,
     backgroundColor: "#4CAF50",
-    borderRadius: 10,
+    borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 12,
+    padding: 16,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
-  listProductText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
-  viewAll: { color: "#449d44", fontWeight: "bold", fontSize: 14, marginRight: 16 },
+  listProductText: { 
+    color: "#fff", 
+    fontWeight: "bold", 
+    fontSize: 16,
+  },
+  viewAll: { 
+    color: "#4CAF50", 
+    fontWeight: "600", 
+    fontSize: 14, 
+    marginRight: 16,
+  },
   rowBetween: {
     flexDirection: "row",
     alignItems: "center",
@@ -416,33 +639,142 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
     marginHorizontal: 16,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 11,
-    elevation: 1,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  productTitle: { fontWeight: "bold", fontSize: 15 },
-  productSub: { color: "#555" },
-  productMeta: { fontSize: 12, color: "#888", marginBottom: 2 },
-  distance: { fontSize: 11, color: "#a2a2a2" },
-  contactBtn: {
+  productIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#f8f9fa",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 14,
+    overflow: "hidden",
+  },
+  productImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  productTitle: { 
+    fontWeight: "bold", 
+    fontSize: 16,
+    color: "#333",
+    marginBottom: 2,
+  },
+  productSub: { 
+    color: "#666",
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  productMeta: { 
+    fontSize: 13, 
+    color: "#4CAF50",
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  distanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  distance: { 
+    fontSize: 12, 
+    color: "#999",
+    marginLeft: 4,
+  },
+  productActions: {
+    alignItems: "center",
+  },
+  heartButton: {
+    padding: 8,
+    marginBottom: 8,
+  },
+  buyButton: {
     backgroundColor: "#4CAF50",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 7,
-    marginLeft: 7,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  buyButtonDisabled: {
+    backgroundColor: "#ddd",
+  },
+  buyButtonText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  buyButtonTextDisabled: {
+    color: "#999",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#666",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
   },
   msgRow: {
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: 16,
     backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 9,
-    marginTop: 8,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
-  msgName: { fontWeight: "bold", color: "#222" },
-  msgTxt: { color: "#555", fontSize: 13 },
-  msgTime: { color: "#bdbdbd", fontSize: 11 },
+  avatarContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#4CAF50",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  msgName: { 
+    fontWeight: "bold", 
+    color: "#333",
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  msgTxt: { 
+    color: "#666", 
+    fontSize: 14,
+  },
+  msgTimeContainer: {
+    alignItems: "flex-end",
+  },
+  msgTime: { 
+    color: "#999", 
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  unreadIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#4CAF50",
+  },
 });

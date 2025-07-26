@@ -13,14 +13,74 @@ import { useRouter } from 'expo-router';
 import { AuthContext } from '../../context/AuthContext';
 import { profileInfo, profileOptions } from '../../constants/data'; // Adjust path as needed
 
-
 export default function Profile() {
-  const { signOut } = useContext(AuthContext);
+  const { signOut, user } = useContext(AuthContext);
   const router = useRouter();
 
+  // Navigation mapping based on label names
+  const getNavigationRoute = (label) => {
+    const routeMap = {
+      'My Crops': '/my-crops',
+      'My Orders': '/RentMachine',
+      'Notifications': '/(tabs)/alerts',
+      'Billing & Payments': '/billing',
+      'Settings': '/settings',
+      'Help & Support': '/jtasupportscreen',
+    };
+
+    return routeMap[label] || null;
+  };
+
+  // Handle special cases that don't require navigation
+  const handleSpecialCases = (label) => {
+    switch (label) {
+      case 'Rate App':
+        Alert.alert(
+          'Rate App',
+          'Would you like to rate our app on the store?',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Rate Now',
+              onPress: () => {
+                // Implement app store rating logic here
+                Alert.alert('Thank you!', 'Redirecting to app store...');
+              },
+            },
+          ]
+        );
+        return true;
+
+      case 'Share App':
+        Alert.alert(
+          'Share App',
+          'Share this amazing app with your friends!',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Share',
+              onPress: () => {
+                // Implement share functionality here
+                Alert.alert('Sharing', 'Opening share options...');
+              },
+            },
+          ]
+        );
+        return true;
+
+      default:
+        return false;
+    }
+  };
+
   const handleOptionPress = (optionId) => {
-    if (optionId === '7') {
-      // Logout confirmation
+    const option = profileOptions.find(o => o.id === optionId);
+    if (!option) return;
+
+    const { label } = option;
+
+    // Handle logout separately
+    if (label === 'Logout') {
       Alert.alert(
         'Logout',
         'Are you sure you want to logout?',
@@ -30,16 +90,44 @@ export default function Profile() {
             text: 'Logout',
             style: 'destructive',
             onPress: async () => {
-              await signOut();
-              router.replace('/(auth)/Login');
+              try {
+                await signOut();
+                router.replace('/(auth)/Login');
+              } catch (error) {
+                Alert.alert('Error', 'Failed to logout. Please try again.');
+              }
             },
           },
         ],
         { cancelable: true }
       );
+      return;
+    }
+
+    // Handle special cases (Rate App, Share App, etc.)
+    if (handleSpecialCases(label)) {
+      return;
+    }
+
+    // Get navigation route
+    const route = getNavigationRoute(label);
+    
+    if (route) {
+      try {
+        router.push(route);
+      } catch (error) {
+        // If navigation fails (screen doesn't exist), show coming soon alert
+        Alert.alert(
+          'Coming Soon', 
+          `${label} feature is under development and will be available soon!`
+        );
+      }
     } else {
-      // You can handle other options here, for now just show alert
-      Alert.alert('Coming Soon', `You clicked ${profileOptions.find(o => o.id === optionId)?.label}`);
+      // Fallback for unmapped options
+      Alert.alert(
+        'Coming Soon', 
+        `${label} feature is under development and will be available soon!`
+      );
     }
   };
 
@@ -47,12 +135,13 @@ export default function Profile() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Image source={profileInfo.avatar} style={styles.avatar} />
-        <Text style={styles.name}>{profileInfo.name}</Text>
+        <Text style={styles.name}>{user?.name}</Text>
       </View>
 
       <ScrollView
         style={styles.optionsContainer}
         contentContainerStyle={{ paddingVertical: 10 }}
+        showsVerticalScrollIndicator={false}
       >
         {profileOptions.map((option) => (
           <TouchableOpacity

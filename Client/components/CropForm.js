@@ -20,13 +20,12 @@ import { listProduct } from '../services/product';
 import Toast from 'react-native-toast-message';
 
 const categoryOptions = ["Vegetables", "Fruits", "Grains"];
-const unitOptions = ["kg", "ton"];
 
 export default function CropForm({ visible, onClose, onSubmit }) {
   const [productName, setProductName] = useState("");
   const [category, setCategory] = useState("Vegetables");
   const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState("kg");
+  const [unit] = useState("kg"); // Fixed unit as kg
   const [pricePerUnit, setPricePerUnit] = useState("");
   const [location, setLocation] = useState("");
   const [deliveryHome, setDeliveryHome] = useState(false);
@@ -39,7 +38,6 @@ export default function CropForm({ visible, onClose, onSubmit }) {
       setProductName("");
       setCategory("Vegetables");
       setQuantity("");
-      setUnit("kg");
       setPricePerUnit("");
       setLocation("");
       setDeliveryHome(false);
@@ -58,9 +56,16 @@ export default function CropForm({ visible, onClose, onSubmit }) {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.7,
+      allowsEditing: true,
+      aspect: [1, 1],
     });
-    if (!result.cancelled) {
-      setImage(result.uri);
+    
+    console.log("Image picker result:", result); // Debug log
+    
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const imageUri = result.assets[0].uri;
+      console.log("Setting image URI:", imageUri); // Debug log
+      setImage(imageUri);
     }
   };
 
@@ -72,9 +77,16 @@ export default function CropForm({ visible, onClose, onSubmit }) {
     }
     const result = await ImagePicker.launchCameraAsync({
       quality: 0.7,
+      allowsEditing: true,
+      aspect: [1, 1],
     });
-    if (!result.cancelled) {
-      setImage(result.uri);
+    
+    console.log("Camera result:", result); // Debug log
+    
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const imageUri = result.assets[0].uri;
+      console.log("Setting camera image URI:", imageUri); // Debug log
+      setImage(imageUri);
     }
   };
 
@@ -180,33 +192,18 @@ export default function CropForm({ visible, onClose, onSubmit }) {
               </Picker>
             </View>
 
-            {/* Quantity and Unit */}
-            <Text style={styles.label}>Quantity Available</Text>
-            <View style={styles.row}>
-              <TextInput
-                style={[styles.input, { flex: 2, marginRight: 8 }]}
-                placeholder="100"
-                keyboardType="numeric"
-                value={quantity}
-                onChangeText={setQuantity}
-              />
-              <View style={[styles.pickerWrapper, { flex: 1 }]}>
-                <Picker
-                  selectedValue={unit}
-                  onValueChange={(val) => setUnit(val)}
-                  style={styles.picker}
-                  itemStyle={{ color: "#000", fontSize: 16 }}
-                  mode="dropdown"
-                >
-                  {unitOptions.map((unitOpt) => (
-                    <Picker.Item label={unitOpt} value={unitOpt} key={unitOpt} />
-                  ))}
-                </Picker>
-              </View>
-            </View>
+            {/* Quantity */}
+            <Text style={styles.label}>Quantity Available (kg)</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="100"
+              keyboardType="numeric"
+              value={quantity}
+              onChangeText={setQuantity}
+            />
 
             {/* Price Per Unit */}
-            <Text style={styles.label}>Price Per Unit (₹)</Text>
+            <Text style={styles.label}>Price Per Unit (₹/kg)</Text>
             <TextInput
               style={styles.input}
               placeholder="20"
@@ -237,23 +234,60 @@ export default function CropForm({ visible, onClose, onSubmit }) {
 
             {/* Upload Image */}
             <Text style={styles.label}>Upload Image</Text>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              {image ? (
-                <Image source={{ uri: image }} style={{ width: 70, height: 70, borderRadius: 8, marginRight: 10 }} />
-              ) : (
-                <View style={styles.placeholderIcon}>
-                  <FontAwesome5 name="seedling" size={32} color="#888" />
+            {console.log("Current image state:", image)}
+            {!image ? (
+              <View style={styles.imageUploadContainer}>
+                <View style={styles.uploadPlaceholder}>
+                  <FontAwesome5 name="image" size={48} color="#bbb" />
+                  <Text style={styles.placeholderText}>No image selected</Text>
                 </View>
-              )}
-              <View style={{ flexDirection: "column" }}>
-                <TouchableOpacity style={[styles.uploadBtn, { marginBottom: 6 }]} onPress={pickImage}>
-                  <Text style={styles.uploadBtnText}>Choose Photo</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.uploadBtn} onPress={takePhoto}>
-                  <Text style={styles.uploadBtnText}>Take Photo</Text>
-                </TouchableOpacity>
+                <View style={styles.uploadButtonsRow}>
+                  <TouchableOpacity style={[styles.uploadBtn, styles.choosePhotoBtn]} onPress={pickImage}>
+                    <FontAwesome5 name="images" size={18} color="#fff" />
+                    <Text style={styles.uploadBtnText}>Choose Photo</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.uploadBtn, styles.takePhotoBtn]} onPress={takePhoto}>
+                    <FontAwesome5 name="camera" size={18} color="#fff" />
+                    <Text style={styles.uploadBtnText}>Take Photo</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
+            ) : (
+              <View style={styles.imagePreviewContainer}>
+                <View style={styles.imageWrapper}>
+                  <Image 
+                    source={{ uri: image }} 
+                    style={styles.previewImage}
+                    onError={(error) => {
+                      console.log("Image load error:", error);
+                      Alert.alert("Error", "Failed to load image");
+                    }}
+                    onLoad={() => console.log("Image loaded successfully")}
+                  />
+                  <View style={styles.imageOverlay}>
+                    <TouchableOpacity 
+                      style={styles.overlayButton}
+                      onPress={() => setImage(null)}
+                    >
+                      <FontAwesome5 name="times" size={16} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <View style={styles.imageActions}>
+                  <TouchableOpacity style={[styles.uploadBtn, styles.changeImageBtn]} onPress={pickImage}>
+                    <FontAwesome5 name="edit" size={16} color="#fff" />
+                    <Text style={styles.uploadBtnText}>Change</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.uploadBtn, styles.removeImageBtn]} 
+                    onPress={() => setImage(null)}
+                  >
+                    <FontAwesome5 name="trash" size={16} color="#fff" />
+                    <Text style={styles.uploadBtnText}>Remove</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
             {/* Description */}
             <Text style={styles.label}>Description (optional)</Text>
@@ -316,20 +350,30 @@ const styles = StyleSheet.create({
     backgroundColor: "#fafafa",
   },
   pickerWrapper: {
-  borderWidth: 1,
-  borderColor: "#ccc",
-  borderRadius: 8,
-  backgroundColor: "#fafafa",
-  marginBottom: 8,
-},
-
-picker: {
-  height: 55,
-  width: "100%",
-  color: "#000",
-  marginTop: Platform.OS === "android" ? -8 : 0, // fixes Android alignment
-},
-
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    backgroundColor: "#fafafa",
+    marginBottom: 8,
+    overflow: 'hidden', // Ensures content stays within borders
+  },
+  picker: {
+    height: Platform.OS === "ios" ? 180 : 50,
+    width: "100%",
+    color: "#000",
+    backgroundColor: "transparent",
+  },
+  unitPicker: {
+    height: Platform.OS === "ios" ? 180 : 50,
+    width: "100%",
+    color: "#000",
+    backgroundColor: "transparent",
+    // Specific fixes for unit picker visibility
+    ...(Platform.OS === "android" && {
+      marginTop: -8,
+      marginBottom: -8,
+    }),
+  },
   row: {
     flexDirection: "row",
     alignItems: "center",
@@ -347,12 +391,18 @@ picker: {
     color: "#444",
   },
   uploadBtn: {
-    marginTop: 6,
-    backgroundColor: "#4CAF50",
-    borderRadius: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    gap: 8,
   },
   uploadBtnText: {
     color: "#fff",
@@ -395,5 +445,88 @@ picker: {
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10,
+  },
+  imageUploadContainer: {
+    alignItems: "center",
+    marginVertical: 16,
+    backgroundColor: "#f8f9fa",
+    borderRadius: 16,
+    padding: 24,
+    borderWidth: 2,
+    borderColor: "#e9ecef",
+    borderStyle: "dashed",
+  },
+  uploadPlaceholder: {
+    alignItems: "center",
+    marginBottom: 20,
+    paddingVertical: 20,
+  },
+  placeholderText: {
+    marginTop: 8,
+    fontSize: 16,
+    color: "#6c757d",
+    fontWeight: "500",
+  },
+  uploadButtonsRow: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+    justifyContent: "center",
+  },
+  choosePhotoBtn: {
+    backgroundColor: "#007AFF",
+    flex: 1,
+    maxWidth: 140,
+  },
+  takePhotoBtn: {
+    backgroundColor: "#FF6B35",
+    flex: 1,
+    maxWidth: 140,
+  },
+  imagePreviewContainer: {
+    alignItems: "center",
+    marginVertical: 16,
+  },
+  imageWrapper: {
+    position: "relative",
+    marginBottom: 16,
+  },
+  previewImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 16,
+    resizeMode: "cover",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+  },
+  imageOverlay: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+  },
+  overlayButton: {
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 20,
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  changeImageBtn: {
+    backgroundColor: "#28a745",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+  },
+  removeImageBtn: {
+    backgroundColor: "#dc3545",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
 });

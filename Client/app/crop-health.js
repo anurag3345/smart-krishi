@@ -10,6 +10,7 @@ import {
   Image,
   Alert,
   Modal,
+  Linking,
 } from 'react-native';
 import { Ionicons,  } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -20,10 +21,67 @@ const CropHealthScreen = () => {
   const router = useRouter();
   const [scannedImage, setScannedImage] = useState(null);
   const [showCameraOptions, setShowCameraOptions] = useState(false);
+  const [showJTAList, setShowJTAList] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   
   // State to store analyzed crops
   const [analyzedCrops, setAnalyzedCrops] = useState([]);
+
+  // JTA data
+  const localJTAs = [
+    {
+      id: 1,
+      name: 'Ramesh Kumar Sharma',
+      designation: 'Senior JTA - Field Crops',
+      area: 'Kathmandu Valley, Bhaktapur',
+      specialization: 'Rice, Wheat, Maize cultivation',
+      phone: '+977-9841234567',
+      email: 'ramesh.jta@gov.np',
+      experience: '8 years',
+      languages: 'Nepali, English',
+      availability: 'Mon-Fri: 9AM-5PM',
+      rating: 4.8,
+    },
+    {
+      id: 2,
+      name: 'Sita Devi Poudel',
+      designation: 'JTA - Horticulture',
+      area: 'Lalitpur, Kathmandu South',
+      specialization: 'Vegetables, Fruit cultivation',
+      phone: '+977-9856789012',
+      email: 'sita.jta@gov.np',
+      experience: '6 years',
+      languages: 'Nepali, Hindi',
+      availability: 'Mon-Sat: 8AM-4PM',
+      rating: 4.6,
+    },
+    {
+      id: 3,
+      name: 'Prakash Bahadur Thapa',
+      designation: 'JTA - Plant Protection',
+      area: 'Kirtipur, Chandragiri',
+      specialization: 'Pest control, Disease management',
+      phone: '+977-9807654321',
+      email: 'prakash.jta@gov.np',
+      experience: '10 years',
+      languages: 'Nepali, English',
+      availability: 'Mon-Fri: 10AM-6PM',
+      rating: 4.9,
+    },
+    {
+      id: 4,
+      name: 'Maya Gurung',
+      designation: 'JTA - Organic Farming',
+      area: 'Tokha, Budhanilkantha',
+      specialization: 'Organic certification, Sustainable farming',
+      phone: '+977-9823456789',
+      email: 'maya.jta@gov.np',
+      experience: '5 years',
+      languages: 'Nepali, English',
+      availability: 'Tue-Sat: 9AM-5PM',
+      rating: 4.7,
+    },
+  ];
 
   // Initial static crops data
   const initialCropsData = [
@@ -56,6 +114,15 @@ const CropHealthScreen = () => {
       timestamp: new Date('2024-01-10'),
     },
   ];
+
+  // Handle JTA contact
+  const handleJTAContact = (jta, contactMethod) => {
+    if (contactMethod === 'phone') {
+      Linking.openURL(`tel:${jta.phone}`);
+    } else if (contactMethod === 'email') {
+      Linking.openURL(`mailto:${jta.email}`);
+    }
+  };
 
   // Request camera permissions
   const requestCameraPermissions = async () => {
@@ -274,6 +341,57 @@ const CropHealthScreen = () => {
     );
   };
 
+  const JTACard = ({ jta }) => (
+    <View style={styles.jtaCard}>
+      <View style={styles.jtaHeader}>
+        <View style={styles.jtaAvatar}>
+          <Text style={styles.jtaAvatarText}>{jta.name.charAt(0)}</Text>
+        </View>
+        <View style={styles.jtaInfo}>
+          <Text style={styles.jtaName}>{jta.name}</Text>
+          <Text style={styles.jtaDesignation}>{jta.designation}</Text>
+          <View style={styles.jtaRating}>
+            <Ionicons name="star" size={12} color="#FFD700" />
+            <Text style={styles.jtaRatingText}>{jta.rating}</Text>
+            <Text style={styles.jtaExperience}>• {jta.experience} exp</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.jtaDetails}>
+        <View style={styles.jtaDetailRow}>
+          <Ionicons name="location" size={12} color="#666" />
+          <Text style={styles.jtaDetailText}>{jta.area}</Text>
+        </View>
+        <View style={styles.jtaDetailRow}>
+          <Ionicons name="leaf" size={12} color="#666" />
+          <Text style={styles.jtaDetailText}>{jta.specialization}</Text>
+        </View>
+        <View style={styles.jtaDetailRow}>
+          <Ionicons name="time" size={12} color="#666" />
+          <Text style={styles.jtaDetailText}>{jta.availability}</Text>
+        </View>
+      </View>
+
+      <View style={styles.jtaActions}>
+        <TouchableOpacity 
+          style={styles.jtaActionButton}
+          onPress={() => handleJTAContact(jta, 'phone')}
+        >
+          <Ionicons name="call" size={16} color="#4CAF50" />
+          <Text style={styles.jtaActionText}>Call</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.jtaActionButton}
+          onPress={() => handleJTAContact(jta, 'email')}
+        >
+          <Ionicons name="mail" size={16} color="#4CAF50" />
+          <Text style={styles.jtaActionText}>Email</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+
   const CropHealthCard = ({ crop }) => (
     <TouchableOpacity style={styles.cropHealthCard} activeOpacity={0.7}>
       {/* Top section with name, location and status */}
@@ -429,7 +547,7 @@ const CropHealthScreen = () => {
               <View style={[styles.statusDot, { backgroundColor: '#4CAF50' }]} />
               <Text style={styles.statusLabel}>Overall Health</Text>
             </View>
-            <Text style={styles.statusValue}>85%</Text>
+            <Text style={styles.statusValue}>70%</Text>
           </View>
           
           <View style={styles.statusCard}>
@@ -437,9 +555,30 @@ const CropHealthScreen = () => {
               <View style={[styles.statusDot, { backgroundColor: '#FF9800' }]} />
               <Text style={styles.statusLabel}>Risk Level</Text>
             </View>
-            <Text style={styles.statusValue}>Low</Text>
+            <Text style={styles.statusValue}>Medium</Text>
           </View>
         </View>
+
+        {/* JTA Support Button */}
+        <TouchableOpacity 
+          style={styles.jtaSupportCard} 
+          onPress={() => setShowJTAList(true)}
+        >
+          <View style={styles.jtaSupportContent}>
+            <View style={styles.jtaSupportIcon}>
+              <Ionicons name="people" size={24} color="#2196F3" />
+            </View>
+            <View style={styles.jtaSupportText}>
+              <Text style={styles.jtaSupportTitle}>Local JTA Support</Text>
+              <Text style={styles.jtaSupportSubtitle}>
+                Get expert help from local agricultural advisors
+              </Text>
+            </View>
+          </View>
+          <View style={styles.jtaSupportBadge}>
+            <Text style={styles.jtaSupportBadgeText}>{localJTAs.length} Available</Text>
+          </View>
+        </TouchableOpacity>
 
         {/* Active Alerts */}
         <View style={styles.sectionHeader}>
@@ -526,6 +665,38 @@ const CropHealthScreen = () => {
             >
               <Text style={styles.cancelOptionText}>Cancel</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* JTA List Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showJTAList}
+        onRequestClose={() => setShowJTAList(false)}
+      >
+        <View style={styles.modalBackground}>
+          <View style={styles.jtaModalContainer}>
+            <View style={styles.jtaModalHeader}>
+              <Text style={styles.jtaModalTitle}>Local JTA Support</Text>
+              <TouchableOpacity 
+                style={styles.jtaModalClose}
+                onPress={() => setShowJTAList(false)}
+              >
+                <Ionicons name="close" size={24} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.jtaModalSubtitle}>
+              Connect with local Junior Technical Assistants for expert agricultural guidance
+            </Text>
+
+            <ScrollView style={styles.jtaList} showsVerticalScrollIndicator={false}>
+              {localJTAs.map((jta) => (
+                <JTACard key={jta.id} jta={jta} />
+              ))}
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -750,6 +921,188 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#333',
+  },
+  // JTA Support Card styles
+  jtaSupportCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  jtaSupportContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  jtaSupportIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E3F2FD',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  jtaSupportText: {
+    flex: 1,
+  },
+  jtaSupportTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  jtaSupportSubtitle: {
+    fontSize: 12,
+    color: '#666',
+  },
+  jtaSupportBadge: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  jtaSupportBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  // JTA Modal styles
+  jtaModalContainer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+    height: '85%',
+  },
+  jtaModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  jtaModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  jtaModalClose: {
+    padding: 4,
+  },
+  jtaModalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  jtaList: {
+    flex: 1,
+  },
+  // JTA Card styles
+  jtaCard: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  jtaHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  jtaAvatar: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#4CAF50',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  jtaAvatarText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  jtaInfo: {
+    flex: 1,
+  },
+  jtaName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  jtaDesignation: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  jtaRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  jtaRatingText: {
+    fontSize: 12,
+    color: '#333',
+    marginLeft: 2,
+    fontWeight: '600',
+  },
+  jtaExperience: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 4,
+  },
+  jtaDetails: {
+    marginBottom: 12,
+  },
+  jtaDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  jtaDetailText: {
+    fontSize: 12,
+    color: '#666',
+    marginLeft: 6,
+    flex: 1,
+  },
+  jtaActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    borderTopWidth: 1,
+    borderTopColor: '#e9ecef',
+    paddingTop: 12,
+  },
+  jtaActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E8F5E8',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    flex: 0.4,
+    justifyContent: 'center',
+  },
+  jtaActionText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: '600',
+    marginLeft: 4,
   },
   alertCard: {
     backgroundColor: 'white',

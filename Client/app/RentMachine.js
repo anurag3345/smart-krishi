@@ -9,11 +9,35 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  StatusBar,
+  SafeAreaView,
 } from "react-native";
 import { FontAwesome5 } from "@expo/vector-icons";
 import MachineForm from "../components/MachineForm"; // Adjust path accordingly
-import RentMachineDetail from "../components/RentMachineOrder"; // Import the new detail component
+import RentProduct from "../components/RentProduct"; // Renamed from RentMachineOrder
+import { useNavigation } from "expo-router";
 import { AuthContext } from "../context/AuthContext";
+
+// Import machine images from assets
+const machineImages = {
+  tractor: require('../assets/machine/mini-tractor.jpeg'), // Update with actual filename
+  tiller: require('../assets/machine/rotavator.jpeg'),   // Update with actual filename
+  harvester: require('../assets/machine/combine-harvester.jpeg'), // Update with actual filename
+};
+
+// Helper function to get machine image based on category
+const getMachineImage = (category) => {
+  switch (category.toLowerCase()) {
+    case 'tractor':
+      return machineImages.tractor;
+    case 'tiller':
+      return machineImages.tiller;
+    case 'harvester':
+      return machineImages.harvester;
+    default:
+      return machineImages.tractor; // Default fallback
+  }
+};
 
 const activeListing = {
   name: "Tractor Model X1",
@@ -21,6 +45,7 @@ const activeListing = {
   available: "10 hours/day",
   views: 7,
   inquiries: 2,
+  image: machineImages.tractor, // Use tractor image for active listing
 };
 
 const initialRecentMachines = [
@@ -31,9 +56,18 @@ const initialRecentMachines = [
     name: "Mini Tractor",
     desc: "Compact diesel, 18HP",
     price: "₹350/hr",
-    available: "5h/day",
+    available: 8, // Changed to number for calculation
+    unit: "hr",
+    maxHours: "5h/day",
     distance: "1.0 km",
     heart: false,
+    image: machineImages.tractor,
+    specifications: {
+      power: "18HP",
+      fuelType: "Diesel",
+      weight: "850kg",
+      transmission: "Manual"
+    }
   },
   {
     id: "m2",
@@ -42,20 +76,38 @@ const initialRecentMachines = [
     name: "Rotavator",
     desc: "Power tiller, 1.2m",
     price: "₹200/hr",
-    available: "8h/day",
+    available: 12,
+    unit: "hr",
+    maxHours: "8h/day",
     distance: "2.7 km",
     heart: true,
+    image: machineImages.tiller,
+    specifications: {
+      width: "1.2m",
+      power: "8HP",
+      fuelType: "Petrol",
+      weight: "45kg"
+    }
   },
   {
     id: "m3",
     category: "Harvester",
     icon: "truck",
-    name: "Harvester",
+    name: "Combine Harvester",
     desc: "Combine harvester, Diesel",
     price: "₹800/hr",
-    available: "4h/day",
+    available: 6,
+    unit: "hr",
+    maxHours: "4h/day",
     distance: "3.8 km",
     heart: false,
+    image: machineImages.harvester,
+    specifications: {
+      power: "75HP",
+      fuelType: "Diesel",
+      capacity: "2 tons/hr",
+      weight: "3500kg"
+    }
   },
 ];
 
@@ -76,19 +128,23 @@ function Chip({ label, active, onPress }) {
       style={[styles.chip, active && styles.chipActive]}
       onPress={() => onPress(label)}
     >
-      <Text style={[styles.chipLabel, active && styles.chipActiveLabel]}>{label}</Text>
+      <Text style={[styles.chipLabel, active && styles.chipActiveLabel]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
 
-export default function RentMachine() {
+export default function RentMachine({ navigation }) {
   const {user}  = useContext(AuthContext)
   const [machines, setMachines] = useState(initialRecentMachines);
   const [searchText, setSearchText] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("All");
   const [modalVisible, setModalVisible] = useState(false);
+  const navigate = useNavigation();
 
-  // New state for selected machine detail
+  // State for RentProduct popup
+  const [rentModalVisible, setRentModalVisible] = useState(false);
   const [selectedMachine, setSelectedMachine] = useState(null);
 
   const toggleHeart = (id) => {
@@ -100,7 +156,9 @@ export default function RentMachine() {
   };
 
   const filteredMachines = machines.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchText.trim().toLowerCase());
+    const matchesSearch = item.name
+      .toLowerCase()
+      .includes(searchText.trim().toLowerCase());
     if (selectedFilter === "All" || selectedFilter === "Near Me") {
       return matchesSearch;
     }
@@ -128,47 +186,105 @@ export default function RentMachine() {
         name: formData.toolName,
         desc: formData.description || "",
         price: `₹${formData.rentalPrice}/${formData.duration}`,
-        available: `${formData.availabilityFrom} to ${formData.availabilityTo}`,
+        available: parseInt(formData.availableHours) || 8,
+        unit: formData.duration === "hour" ? "hr" : "day",
+        maxHours: `${formData.availabilityFrom} to ${formData.availabilityTo}`,
         distance: "0 km",
         heart: false,
+        // Use image from assets based on category, or custom image if provided
+        image: formData.imageUri && formData.imageUri.length > 0 
+          ? { uri: formData.imageUri } 
+          : getMachineImage(formData.category),
+        specifications: {
+          power: formData.power || "N/A",
+          fuelType: formData.fuelType || "N/A",
+          weight: formData.weight || "N/A"
+        }
       },
       ...prev,
     ]);
     setModalVisible(false);
   };
 
-  // If a machine is selected for detail, render that and hide main list
-  if (selectedMachine) {
-    return (
-      <RentMachineDetail
-        machine={selectedMachine}
-        onClose={() => setSelectedMachine(null)}
-      />
+  // Open rent modal with selected machine data
+  const onRentPress = (machine) => {
+    setSelectedMachine(machine);
+    setRentModalVisible(true);
+  };
+
+  // Close rent modal
+  const onRentClose = () => {
+    setRentModalVisible(false);
+    setSelectedMachine(null);
+  };
+
+  // Handle successful rental - decrease available hours
+  const handleRentSuccess = (machineId, rentedHours) => {
+    setMachines((prev) =>
+      prev.map((item) =>
+        item.id === machineId
+          ? { ...item, available: Math.max(0, item.available - rentedHours) }
+          : item
+      )
     );
-  }
+    setRentModalVisible(false);
+    setSelectedMachine(null);
+  };
 
   return (
-    <>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      
+      {/* Top Bar */}
+      <View style={styles.topBar}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => navigate.pop(1)}
+        >
+          {/* <FontAwesome5 name="arrow-left" size={20} color="#333" /> */}
+        </TouchableOpacity>
+        <Text style={styles.topBarTitle}>Agricultural Equipment Rental</Text>
+        <TouchableOpacity style={styles.menuButton}>
+          <FontAwesome5 name="ellipsis-v" size={20} color="#333" />
+        </TouchableOpacity>
+      </View>
+
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
       >
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
-          {/* Search Row */}
-          <View style={styles.searchRow}>
-            <FontAwesome5 name="search" size={16} color="#8e8e8e" style={styles.iconLeft} />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search machines..."
-              placeholderTextColor="#bdbdbd"
-              value={searchText}
-              onChangeText={setSearchText}
-              autoCorrect={false}
-              autoCapitalize="none"
-              clearButtonMode="while-editing"
-            />
-            <FontAwesome5 name="sliders-h" size={16} color="#8e8e8e" style={styles.iconRight} />
+        <ScrollView 
+          keyboardShouldPersistTaps="handled" 
+          contentContainerStyle={{ paddingBottom: 24 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Search Bar */}
+          <View style={styles.searchContainer}>
+            <View style={styles.searchRow}>
+              <FontAwesome5
+                name="search"
+                size={16}
+                color="#8e8e8e"
+                style={styles.iconLeft}
+              />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search agricultural equipment..."
+                placeholderTextColor="#bdbdbd"
+                value={searchText}
+                onChangeText={setSearchText}
+                autoCorrect={false}
+                autoCapitalize="none"
+                clearButtonMode="while-editing"
+              />
+              <FontAwesome5
+                name="sliders-h"
+                size={16}
+                color="#8e8e8e"
+                style={styles.iconRight}
+              />
+            </View>
           </View>
 
           {/* Filter Chips */}
@@ -176,40 +292,55 @@ export default function RentMachine() {
             horizontal
             showsHorizontalScrollIndicator={false}
             style={styles.chipScroll}
-            contentContainerStyle={{ paddingLeft: 12, paddingRight: 16 }}
+            contentContainerStyle={{ paddingLeft: 16, paddingRight: 16 }}
           >
             {filterOptions.map((label) => (
-              <Chip key={label} label={label} active={selectedFilter === label} onPress={setSelectedFilter} />
+              <Chip
+                key={label}
+                label={label}
+                active={selectedFilter === label}
+                onPress={setSelectedFilter}
+              />
             ))}
           </ScrollView>
 
           {/* My Active Listings */}
           {user?.role === 'farmer' && <Text style={styles.sectionTitle}>My Active Listings</Text>}
-          {user?.role === 'farmer' &&           <View style={styles.listingCard}>
-            <FontAwesome5 name="tractor" size={22} color="#6c97eb" style={{ marginRight: 12 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.listingTitle}>{activeListing.name}</Text>
-              <Text style={styles.listingSub}>
-                {activeListing.price} • {activeListing.available}
-              </Text>
-              <View style={styles.metaRow}>
-                <Text style={styles.active}>Active</Text>
-                <Text style={styles.metaInfo}>
-                  {activeListing.views} views • {activeListing.inquiries} inquiries
+          {user?.role === 'farmer' && (
+            <View style={styles.listingCard}>
+              <View style={styles.listingImageContainer}>
+                <Image
+                  source={activeListing.image}
+                  style={styles.listingImage}
+                  resizeMode="cover"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.listingTitle}>{activeListing.name}</Text>
+                <Text style={styles.listingSub}>
+                  {activeListing.price} • {activeListing.available}
                 </Text>
+                <View style={styles.metaRow}>
+                  <View style={styles.activeStatus}>
+                    <Text style={styles.activeText}>Active</Text>
+                  </View>
+                  <Text style={styles.metaInfo}>
+                    {activeListing.views} views • {activeListing.inquiries} inquiries
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>}
+          )}
 
           {/* List Your Machine Button */}
-          {user?.role === 'farmer' &&           <TouchableOpacity style={styles.listProductBtn} onPress={() => setModalVisible(true)}>
+          <TouchableOpacity style={styles.listProductBtn} onPress={() => setModalVisible(true)}>
             <Text style={styles.listProductText}>List Your Machine</Text>
             <FontAwesome5 name="plus" size={16} color="#fff" style={{ marginLeft: 8 }} />
-          </TouchableOpacity>}
+          </TouchableOpacity>
 
-          {/* Recent Machines */}
+          {/* Available Equipment */}
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Recent Machines</Text>
+            <Text style={styles.sectionTitle}>Available Equipment</Text>
             <TouchableOpacity>
               <Text style={styles.viewAll}>View All</Text>
             </TouchableOpacity>
@@ -218,120 +349,290 @@ export default function RentMachine() {
           {sortedMachines.length > 0 ? (
             sortedMachines.map((item) => (
               <View style={styles.productCard} key={item.id}>
-                {item.icon && (item.icon.startsWith("http") || item.icon.startsWith("file://")) ? (
-                  <Image source={{ uri: item.icon }} style={{ width: 28, height: 28, borderRadius: 5, marginRight: 12 }} />
-                ) : (
-                  <FontAwesome5 name={item.icon || "seedling"} size={22} color="#a5d7a7" style={{ marginRight: 12 }} />
-                )}
+                <View style={styles.productImageContainer}>
+                  <Image
+                    source={item.image}
+                    style={styles.productImage}
+                    resizeMode="cover"
+                  />
+                </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.productTitle}>{item.name}</Text>
                   <Text style={styles.productSub}>{item.desc}</Text>
                   <Text style={styles.productMeta}>
-                    {item.price} {item.available}
+                    {item.price} • {item.available}{item.unit} available
                   </Text>
-                  <Text style={styles.distance}>{item.distance} away</Text>
+                  <View style={styles.distanceRow}>
+                    <FontAwesome5 name="map-marker-alt" size={12} color="#999" />
+                    <Text style={styles.distance}>{item.distance} away</Text>
+                  </View>
                 </View>
-                <TouchableOpacity onPress={() => toggleHeart(item.id)} style={{ paddingHorizontal: 8 }}>
-                  <FontAwesome5 name="heart" size={18} color={item.heart ? "#e74c3c" : "#bbb"} solid={item.heart} />
-                </TouchableOpacity>
-                {/* Updated Rent Now: On press open detail */}
-                <TouchableOpacity
-                  style={styles.contactBtn}
-                  onPress={() => setSelectedMachine(item)}
-                >
-                  <Text style={{ color: "#fff", fontSize: 13 }}>Rent Now</Text>
-                </TouchableOpacity>
+                <View style={styles.productActions}>
+                  <TouchableOpacity
+                    onPress={() => toggleHeart(item.id)}
+                    style={styles.heartButton}
+                  >
+                    <FontAwesome5
+                      name="heart"
+                      size={18}
+                      color={item.heart ? "#e74c3c" : "#ddd"}
+                      solid={item.heart}
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.rentButton,
+                      item.available <= 0 && styles.rentButtonDisabled
+                    ]}
+                    onPress={() => onRentPress(item)}
+                    disabled={item.available <= 0}
+                  >
+                    <Text style={[
+                      styles.rentButtonText,
+                      item.available <= 0 && styles.rentButtonTextDisabled
+                    ]}>
+                      {item.available <= 0 ? "Not Available" : "Rent Now"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ))
           ) : (
-            <Text style={{ textAlign: "center", marginVertical: 16, color: "#999" }}>
-              No machines found
-            </Text>
+            <View style={styles.emptyState}>
+              <FontAwesome5 name="tools" size={48} color="#ddd" />
+              <Text style={styles.emptyStateText}>No equipment found</Text>
+              <Text style={styles.emptyStateSubtext}>Try adjusting your search or filters</Text>
+            </View>
           )}
 
           {/* Recent Messages */}
           <Text style={styles.sectionTitle}>Recent Messages</Text>
           {messages.map((msg) => (
-            <View key={msg.id} style={styles.msgRow}>
-              <FontAwesome5 name="user-circle" size={24} color="#bdbdbd" style={{ marginRight: 10 }} />
+            <TouchableOpacity key={msg.id} style={styles.msgRow}>
+              <View style={styles.avatarContainer}>
+                <FontAwesome5
+                  name="user"
+                  size={16}
+                  color="#fff"
+                />
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.msgName}>{msg.name}</Text>
                 <Text style={styles.msgTxt}>{msg.msg}</Text>
               </View>
-              <Text style={styles.msgTime}>{msg.time}</Text>
-            </View>
+              <View style={styles.msgTimeContainer}>
+                <Text style={styles.msgTime}>{msg.time}</Text>
+                <View style={styles.unreadIndicator} />
+              </View>
+            </TouchableOpacity>
           ))}
         </ScrollView>
       </KeyboardAvoidingView>
 
       {/* Machine Form Modal */}
-      <MachineForm visible={modalVisible} onClose={() => setModalVisible(false)} onSubmit={handleFormSubmit} />
-    </>
+      <MachineForm
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSubmit={handleFormSubmit}
+      />
+
+      {/* Rent Product Modal */}
+      <RentProduct
+        visible={rentModalVisible}
+        onClose={onRentClose}
+        machine={selectedMachine}
+        onRentSuccess={handleRentSuccess}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f7f7f7", paddingTop: 20 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+
+  topBarTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#333",
+    flex: 1,
+    textAlign: "center",
+    marginHorizontal: 16,
+  },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f8f8f8",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  container: { 
+    flex: 1, 
+    backgroundColor: "#f8f9fa",
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#eee",
-    borderRadius: 10,
-    margin: 16,
-    paddingHorizontal: 10,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  iconLeft: { marginRight: 7 },
-  iconRight: { marginLeft: 7 },
-  searchInput: { flex: 1, height: 38, fontSize: 16, color: "#222" },
-  chipScroll: { marginBottom: 8 },
+  iconLeft: { marginRight: 10 },
+  iconRight: { marginLeft: 10 },
+  searchInput: { 
+    flex: 1, 
+    height: 44, 
+    fontSize: 16, 
+    color: "#333",
+  },
+  chipScroll: { 
+    marginBottom: 16,
+  },
   chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    backgroundColor: "#ececec",
-    borderRadius: 13,
-    marginRight: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    marginRight: 10,
     alignSelf: "center",
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
-  chipActive: { backgroundColor: "#4CAF50" },
-  chipLabel: { color: "#555" },
-  chipActiveLabel: { color: "#fff" },
+  chipActive: { 
+    backgroundColor: "#4CAF50",
+    elevation: 2,
+  },
+  chipLabel: { 
+    color: "#666",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  chipActiveLabel: { 
+    color: "#fff",
+    fontWeight: "600",
+  },
   sectionTitle: {
     fontWeight: "bold",
-    fontSize: 16,
-    color: "#222",
+    fontSize: 18,
+    color: "#333",
     marginLeft: 16,
     marginTop: 16,
-    marginBottom: 8,
+    marginBottom: 12,
   },
   listingCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
     marginHorizontal: 16,
-    borderRadius: 12,
-    padding: 14,
-    shadowColor: "#ddd",
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
-    marginBottom: 10,
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    marginBottom: 16,
   },
-  listingTitle: { fontSize: 15, fontWeight: "bold", color: "#333" },
-  listingSub: { color: "#888", marginBottom: 2 },
-  metaRow: { flexDirection: "row", alignItems: "center", marginTop: 2 },
-  metaInfo: { fontSize: 12, color: "#888", marginLeft: 7 },
-  active: { fontSize: 12, color: "#4CAF50", fontWeight: "bold", marginRight: 7 },
+  // Updated styles for listing image
+  listingImageContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
+    marginRight: 14,
+    backgroundColor: '#f0f0f0',
+  },
+  listingImage: {
+    width: '100%',
+    height: '100%',
+  },
+  listingTitle: { 
+    fontSize: 16, 
+    fontWeight: "bold", 
+    color: "#333",
+    marginBottom: 4,
+  },
+  listingSub: { 
+    color: "#666", 
+    marginBottom: 6,
+    fontSize: 14,
+  },
+  metaRow: { 
+    flexDirection: "row", 
+    alignItems: "center",
+  },
+  activeStatus: {
+    backgroundColor: "#e8f5e8",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    marginRight: 8,
+  },
+  activeText: {
+    fontSize: 12,
+    color: "#4CAF50",
+    fontWeight: "600",
+  },
+  metaInfo: { 
+    fontSize: 12, 
+    color: "#999",
+  },
   listProductBtn: {
     margin: 16,
     backgroundColor: "#4CAF50",
-    borderRadius: 10,
+    borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 12,
+    padding: 16,
+    elevation: 3,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
-  listProductText: { color: "#fff", fontWeight: "bold", fontSize: 15 },
-  viewAll: { color: "#449d44", fontWeight: "bold", fontSize: 14, marginRight: 16 },
+  listProductText: { 
+    color: "#fff", 
+    fontWeight: "bold", 
+    fontSize: 16,
+  },
+  viewAll: { 
+    color: "#4CAF50", 
+    fontWeight: "600", 
+    fontSize: 14, 
+    marginRight: 16,
+  },
   rowBetween: {
     flexDirection: "row",
     alignItems: "center",
@@ -342,33 +643,140 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
     marginHorizontal: 16,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 11,
-    elevation: 1,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
   },
-  productTitle: { fontWeight: "bold", fontSize: 15 },
-  productSub: { color: "#555" },
-  productMeta: { fontSize: 12, color: "#888", marginBottom: 2 },
-  distance: { fontSize: 11, color: "#a2a2a2" },
-  contactBtn: {
+  // Updated styles for product images
+  productImageContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginRight: 14,
+    backgroundColor: '#f0f0f0',
+  },
+  productImage: {
+    width: '100%',
+    height: '100%',
+  },
+  productTitle: { 
+    fontWeight: "bold", 
+    fontSize: 16,
+    color: "#333",
+    marginBottom: 2,
+  },
+  productSub: { 
+    color: "#666",
+    fontSize: 14,
+    marginBottom: 4,
+  },
+  productMeta: { 
+    fontSize: 13, 
+    color: "#4CAF50",
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  distanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  distance: { 
+    fontSize: 12, 
+    color: "#999",
+    marginLeft: 4,
+  },
+  productActions: {
+    alignItems: "center",
+  },
+  heartButton: {
+    padding: 8,
+    marginBottom: 8,
+  },
+  rentButton: {
     backgroundColor: "#4CAF50",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 7,
-    marginLeft: 7,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  rentButtonDisabled: {
+    backgroundColor: "#ddd",
+  },
+  rentButtonText: {
+    color: "#fff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  rentButtonTextDisabled: {
+    color: "#999",
+  },
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyStateText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#666",
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    color: "#999",
+    textAlign: "center",
   },
   msgRow: {
     flexDirection: "row",
     alignItems: "center",
     marginHorizontal: 16,
     backgroundColor: "#fff",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 9,
-    marginTop: 8,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1,
   },
-  msgName: { fontWeight: "bold", color: "#222" },
-  msgTxt: { color: "#555", fontSize: 13 },
-  msgTime: { color: "#bdbdbd", fontSize: 11 },
+  avatarContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#4CAF50",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  msgName: { 
+    fontWeight: "bold", 
+    color: "#333",
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  msgTxt: { 
+    color: "#666", 
+    fontSize: 14,
+  },
+  msgTimeContainer: {
+    alignItems: "flex-end",
+  },
+  msgTime: { 
+    color: "#999", 
+    fontSize: 12,
+    marginBottom: 4,
+  },
+  unreadIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#4CAF50",
+  },
 });
