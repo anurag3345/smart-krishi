@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function HomeHeader() {
   const [language, setLanguage] = useState('EN');
@@ -14,7 +14,12 @@ export default function HomeHeader() {
     <View style={styles.container}>
       {/* Left: Leaf icon + Title */}
       <View style={styles.leftSection}>
-        <Ionicons name="leaf" size={24} color="white" style={styles.iconSpacing} />
+        <Image
+  source={require('../assets/images/logo.png')} 
+  style={[{ width: 24, height: 24}, styles.iconSpacing]}
+/>
+
+        {/* <Ionicons name="leaf" size={24} color="white" style={styles.iconSpacing} /> */}
         <Text style={styles.title}>Smart Krishi</Text>
       </View>
 
@@ -57,6 +62,7 @@ const styles = StyleSheet.create({
   },
   iconSpacing: {
     marginRight: 8,
+    borderRadius:10,
   },
   languageButton: {
     backgroundColor: '#ffffff',
