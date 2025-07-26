@@ -10,7 +10,8 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="SMART KRISHI", version="1.0.0")
 
-app.include_router(auth.router)
+app.include_router(auth.router, prefix="/auth", tags=["auth"])
+
 # app.include_router(crops.router)
 # app.include_router(disease.router)
 app.include_router(machinery.router)

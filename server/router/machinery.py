@@ -6,6 +6,7 @@ import os
 import uuid
 from PIL import Image
 import io
+from datetime import datetime, timezone
 
 from schemas.machinery import (
     MachineryCreate,
@@ -23,6 +24,8 @@ from services.auth import get_current_user
 from models.user import User
 from services.sms import send_sms_notification
 from math import radians, cos, sin, asin, sqrt
+from fastapi import Depends
+from services.auth import get_current_user
 # Define haversine function here
 def haversine(lat1, lon1, lat2, lon2):
     R = 6371  # Radius of earth in km
@@ -39,16 +42,16 @@ router = APIRouter(prefix="/machinery", tags=["machinery"])
 MACHINERY_IMAGES_DIR = "static/machinery_images"
 os.makedirs(MACHINERY_IMAGES_DIR, exist_ok=True)
 
+  
 @router.post("/", response_model=MachineryOut)
 async def create_machinery(
     name: str = Form(...),
     description: Optional[str] = Form(None),
     price_per_hour: float = Form(...),
-    # location: str = Form(...),
     latitude: float = Form(...),
     longitude: float = Form(...),
-    owner_name: str = Form(...),
-    owner_phone: str = Form(...),
+    owner_name: str = Depends(get_current_user),  # <- **Change here explained below**
+    owner_phone: str = Depends(get_current_user), # <- same here
     available_from: datetime = Form(...),
     available_to: datetime = Form(...),
     delivery_available: bool = Form(False),
@@ -57,23 +60,27 @@ async def create_machinery(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Save image
-    file_ext = image.filename.split('.')[-1]
-    filename = f"{uuid.uuid4()}.{file_ext}"
-    filepath = os.path.join(MACHINERY_IMAGES_DIR, filename)
-    
-    # Process image
-    contents = await image.read()
-    img = Image.open(io.BytesIO(contents))
-    img.thumbnail((800, 800))
-    img.save(filepath, "JPEG" if file_ext.lower() in ['jpg', 'jpeg'] else "PNG")
-    
-    # Create machinery
+    # Use current_user for owner info
+    owner_name = current_user.name
+    owner_phone = current_user.phone
+
+    # Save image with error handling
+    try:
+        contents = await image.read()
+        img = Image.open(io.BytesIO(contents))
+        img.thumbnail((800, 800))
+        file_ext = image.filename.split('.')[-1].lower()
+        save_format = "JPEG" if file_ext in ['jpg', 'jpeg'] else "PNG"
+        filename = f"{uuid.uuid4()}.{file_ext}"
+        filepath = os.path.join(MACHINERY_IMAGES_DIR, filename)
+        img.save(filepath, save_format)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Image processing error: {str(e)}")
+
     machinery = Machinery(
-       machine_name= name,
+         name=name,
         description=description,
         price_per_hour=price_per_hour,
-        # location=location,
         latitude=latitude,
         longitude=longitude,
         owner_name=owner_name,
@@ -84,16 +91,17 @@ async def create_machinery(
         delivery_available=delivery_available,
         delivery_charge=delivery_charge
     )
-    
     db.add(machinery)
     db.commit()
     db.refresh(machinery)
     return machinery
 
+
+
+
 @router.get("/", response_model=List[MachineryOut])
 async def get_machinery(
     machine_name:str,
-    # location: Optional[str] = None,
     latitude: Optional[float] = None,
     longitude: Optional[float] = None,
     max_distance: int = 20,  # Default 20km radius
@@ -123,6 +131,8 @@ async def get_machinery(
 
     return all_machines
 
+# booking machinery
+
 @router.post("/book", response_model=BookingOut)
 async def book_machinery(
     booking: BookingCreate,
@@ -142,12 +152,11 @@ async def book_machinery(
         )
     
     # Check availability time
-    if booking.start_time < datetime.now() or booking.end_time <= booking.start_time:
+    if booking.start_time < datetime.now(timezone.utc) or booking.end_time <= booking.start_time:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid booking time range"
         )
-    
     # Calculate total price
     hours = (booking.end_time - booking.start_time).total_seconds() / 3600
     total_price = machinery.price_per_hour * hours
@@ -187,7 +196,6 @@ async def book_machinery(
         "machinery_name": machinery.name,
         "owner_name": machinery.owner_name,
         "owner_phone": machinery.owner_phone,
-        "location": machinery.location,
         "price_per_hour": machinery.price_per_hour,
         "delivery_charge": machinery.delivery_charge if booking.delivery_type == DeliveryType.OWNER_DELIVERY else None
     }
@@ -206,7 +214,6 @@ async def get_user_bookings(
         "machinery_name": booking.machinery.name,
         "owner_name": booking.machinery.owner_name,
         "owner_phone": booking.machinery.owner_phone,
-        "location": booking.machinery.location,
         "price_per_hour": booking.machinery.price_per_hour,
         "delivery_charge": booking.machinery.delivery_charge if booking.delivery_type == DeliveryType.OWNER_DELIVERY else None
     } for booking in bookings]

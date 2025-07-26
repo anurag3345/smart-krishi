@@ -1,63 +1,28 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 from enum import Enum
 
-class DeliveryType(str, Enum):
-    SELF_PICKUP = "self_pickup"
-    OWNER_DELIVERY = "owner_delivery"
 
-class MachineryBase(BaseModel):
-    machine_name: str = Field(..., min_length=3, max_length=100)
-    description: Optional[str] = Field(None, max_length=500)
-    price_per_hour: float = Field(..., gt=0)
-    location: str
+class DeliveryType(str, Enum):
+    SELF_PICKUP = "SELF_PICKUP"
+    OWNER_DELIVERY = "OWNER_DELIVERY"
+
+
+class MachineryCreate(BaseModel):
+    name: str
+    description: Optional[str]
+    price_per_hour: float
+    latitude: float
+    longitude: float
     available_from: datetime
     available_to: datetime
-    delivery_available: bool = False
-    delivery_charge: Optional[float] = Field(None, ge=0)
-
-class MachineryCreate(MachineryBase):
-    owner_name: str
-    owner_phone: str 
-
-class MachineryOut(MachineryBase):
-    id: int
-    owner_name: str
-    owner_phone: str
-    image_url: Optional[str]
-    is_available: bool
-    created_at: datetime
-    
-    class Config:
-        from_attributes = True
-
-class BookingCreate(BaseModel):
-    machinery_id: int
-    start_time: datetime
-    end_time: datetime
-    delivery_type: DeliveryType
-    user_phone: str 
-
-class BookingOut(BaseModel):
-    id: int
-    machinery_name: str
-    owner_name: str
-    owner_phone: str
-    location: str
-    price_per_hour: float
-    total_price: float
-    start_time: datetime
-    end_time: datetime
-    delivery_type: DeliveryType
+    delivery_available: Optional[bool] = False
     delivery_charge: Optional[float]
-    booking_date: datetime
-    
-    class Config:
-        from_attributes = True
+
 
 class MachineryUpdate(BaseModel):
-    machine_name: Optional[str]
+    name: Optional[str]
     description: Optional[str]
     price_per_hour: Optional[float]
     latitude: Optional[float]
@@ -67,3 +32,37 @@ class MachineryUpdate(BaseModel):
     delivery_available: Optional[bool]
     delivery_charge: Optional[float]
     is_available: Optional[bool]
+
+
+class MachineryOut(MachineryCreate):
+    id: int
+    owner_name: str
+    owner_phone: str
+    image_url: Optional[str]
+    is_available: bool = True
+
+    class Config:
+        orm_mode = True
+
+
+class BookingCreate(BaseModel):
+    machinery_id: int
+    user_phone: str
+    start_time: datetime
+    end_time: datetime
+    delivery_type: DeliveryType
+
+
+class BookingOut(BookingCreate):
+    id: int
+    total_price: float
+    machinery_name: Optional[str]
+    latitude: Optional[float]
+    longitude: Optional[float]
+    owner_name: Optional[str]
+    owner_phone: Optional[str]
+    price_per_hour: Optional[float]
+    delivery_charge: Optional[float]
+
+    class Config:
+        orm_mode = True

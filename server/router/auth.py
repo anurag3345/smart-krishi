@@ -3,20 +3,21 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
 
-from schemas.user import UserCreate, UserOut, UserLogin, Token
+from schemas.user import UserCreate, UserOut, Token
 from models.user import User
 from database import get_db
 from services.auth import (
     get_password_hash,
     verify_password,
     create_access_token,
-    SECRET_KEY,
-    ALGORITHM,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+router = APIRouter( tags=["auth"])
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")  # 👈 Required for Swagger UI popup
+
+# ✅ Register endpoint (no changes)
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 async def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(User).filter(User.email == user.email).first()
@@ -29,7 +30,6 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
         name=user.name,
         phone=user.phone,
         password=hashed_password,
-        # location=user.location,
         latitude=user.latitude,
         longitude=user.longitude,
     )
@@ -38,6 +38,7 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(db_user)
     return db_user
 
+# ✅ Login endpoint using OAuth2PasswordRequestForm (enables Swagger popup)
 @router.post("/login", response_model=Token)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
