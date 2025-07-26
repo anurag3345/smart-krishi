@@ -10,7 +10,9 @@ export const featureGridItems = [
   { id: '2', title: 'Crop Health', icon: 'medkit-outline', bgColor: '#fde0dc' },
   { id: '3', title: 'Sell Produce', icon: 'cart-outline', bgColor: '#fff3e0' },
   { id: '4', title: 'Rent Tools', icon: 'construct-outline', bgColor: '#e3f2fd' },
+  { id: '5', title: 'My Purchases', icon: 'basket-outline', bgColor: '#f3e5f5' }, 
 ];
+
 
 export const weatherInfo = {
   location: 'Kathmandu',
@@ -179,5 +181,141 @@ export const cropList = [
     id: '5',
     name: 'Onion',
     image: require('../assets/crops/onion.jpg'),
+  },
+];
+
+
+
+export const smartKrishiFAQs = [
+  {
+    question: "What is SmartKrishi?",
+    answer: "SmartKrishi is a digital platform designed to assist farmers by providing agricultural information, weather forecasts, crop management tips, and market prices through a user-friendly mobile app or website."
+  },
+  {
+    question: "How can SmartKrishi help improve my farming practices?",
+    answer: "SmartKrishi provides tailored advice on crop selection, pest control, fertilizer usage, irrigation scheduling, and market trends, helping farmers make informed decisions for better yield and profit."
+  },
+  {
+    question: "Does SmartKrishi work offline?",
+    answer: "Some features of SmartKrishi, like saved crop guides and past weather data, are available offline. However, real-time updates such as weather forecasts and market prices require an internet connection."
+  },
+  {
+    question: "Is SmartKrishi available in local languages?",
+    answer: "Yes, SmartKrishi supports multiple local languages to make it easier for farmers from different regions to access and understand the information."
+  },
+  {
+    question: "How do I get started with SmartKrishi?",
+    answer: "You can download the SmartKrishi app from the Google Play Store or visit the official website. After creating an account, you can set your crop preferences and start receiving customized tips and updates."
+  }
+];
+
+
+export const FavoriteFarmer= [
+  {
+    name: "Ramesh Yadav",
+    location: "1.2 km",
+    contact: "+91 9876543210",
+    image: require('../assets/images/farmer.jpg')
+  },
+  {
+    name: "Ram Sharma",
+    location: "2.8 km",
+    contact: "+91 9123456780",
+    image: require('../assets/images/farmer.jpg')
+  },
+  {
+    name: "Mohammad Irfan",
+    location: "3.1 km",
+    contact: "+91 9988776655",
+    image: require('../assets/images/farmer.jpg')
+  },
+  {
+    name: "Lakshmi Patel",
+    location: "0.9 km",
+    contact: "+91 8877665544",
+    image: require('../assets/images/farmer.jpg')
+  },
+  {
+    name: "Anil Sharma",
+    location: "4.5 km",
+    contact: "+91 7766554433",
+    image: require('../assets/images/farmer.jpg')
+  }
+];
+
+
+export const cropPurchases = [
+  {
+    image: require('../assets/crops/wheat.jpg'),
+    name: 'Wheat',
+    quantity: '50 kg',
+    personName: 'Ramesh Yadav',
+    status: 'Delivered',
+    totalAmount: '₹2000',
+  },
+  {
+    image: require('../assets/crops/rice.jpg'),
+    name: 'Rice',
+    quantity: '100 kg',
+    personName: 'Sita Kumari',
+    status: 'Pending',
+    totalAmount: '₹4500',
+  },
+  {
+    image: require('../assets/crops/onion.jpg'),
+    name: 'Onion',
+    quantity: '30 kg',
+    personName: 'Ajay Singh',
+    status: 'Delivered',
+    totalAmount: '₹1500',
+  },
+  {
+    image: require('../assets/crops/potato.jpg'),
+    name: 'Potato',
+    quantity: '40 kg',
+    personName: 'Kavita Sharma',
+    status: 'Cancelled',
+    totalAmount: '₹3200',
+  },
+  {
+    image: require('../assets/crops/maize.jpg'),
+    name: 'Maize',
+    quantity: '25 kg',
+    personName: 'Deepak Patel',
+    status: 'Delivered',
+    totalAmount: '₹1800',
+  },
+];
+
+
+
+
+export const purchasedCrops = [
+  {
+    id: 1,
+    image: require('../assets/crops/wheat.jpg'),
+    name: 'Wheat',
+    quantity: '100 kg',
+    broughtFrom: 'Rajesh Thapa',
+    status: 'Delivered',
+    totalAmount: 'Rs. 5,000',
+  },
+  {
+    id: 2,
+    image: require('../assets/crops/potato.jpg'),
+    name: 'Potatoes',
+    quantity: '50 kg',
+    broughtFrom: 'Anjali Singh',
+    status: 'In Transit',
+    totalAmount: 'Rs. 2,500',
+  },
+  {
+    id: 3,
+    image: require('../assets/crops/rice.jpg'),
+    name: 'Rice',
+    quantity: '120 kg',
+    broughtFrom: 'Kamal Yadav',
+    status: 'Delivered',
+    totalAmount: 'Rs. 6,000',
   },
 ];

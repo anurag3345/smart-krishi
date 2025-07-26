@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { AuthContext } from '../context/AuthContext';
 
-export default function GreetingCard({ user }) {
+export default function GreetingCard() {
+  const {user} = useContext(AuthContext)
   const [showQuestion, setShowQuestion] = useState(true);
 
   useEffect(() => {
@@ -17,8 +19,8 @@ export default function GreetingCard({ user }) {
       {/* Left: Text Content */}
       <View style={styles.textContainer}>
         <Text style={styles.hello}>नमस्ते (Namaste),</Text>
-        <Text style={styles.name}>{user.name}</Text>
-        <Text style={styles.tip}>{user.tip}</Text>
+        <Text style={styles.name}>{user?.name}</Text>
+        {user?.role === 'user' && <Text style={styles.tip}>Today is a good day for farming</Text>}
       </View>
 
       {/* Right: Animated Icon */}

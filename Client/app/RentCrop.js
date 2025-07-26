@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
 import { FontAwesome5 } from "@expo/vector-icons";
 import CropForm from "../components/CropForm"; // Adjust path accordingly
 import OrderCrop from "../components/OrderCrop"; // Import new OrderCrop component
+import { AuthContext } from "../context/AuthContext";
+import FavoriteFarmers from "../components/FavoriteFarmers";
 
 const activeListing = {
   name: "Fresh Tomatoes",
@@ -81,6 +83,7 @@ function Chip({ label, active, onPress }) {
 }
 
 export default function RentCrop() {
+   const {user} = useContext(AuthContext);
   const [products, setProducts] = useState(initialRecentProducts);
   const [searchText, setSearchText] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("All");
@@ -202,8 +205,10 @@ export default function RentCrop() {
           </ScrollView>
 
           {/* My Active Listings */}
-          <Text style={styles.sectionTitle}>My Active Listings</Text>
-          <View style={styles.listingCard}>
+
+          {user?.role === 'farmer' && <Text style={styles.sectionTitle}>My Active Listings</Text>}
+
+          {user?.role === 'farmer' &&           <View style={styles.listingCard}>
             <FontAwesome5
               name="pepper-hot"
               size={22}
@@ -222,10 +227,11 @@ export default function RentCrop() {
                 </Text>
               </View>
             </View>
-          </View>
+          </View>}
+          
 
           {/* List Your Product Button */}
-          <TouchableOpacity
+          {user?.role === 'farmer' &&           <TouchableOpacity
             style={styles.listProductBtn}
             onPress={() => setModalVisible(true)}
           >
@@ -236,7 +242,7 @@ export default function RentCrop() {
               color="#fff"
               style={{ marginLeft: 8 }}
             />
-          </TouchableOpacity>
+          </TouchableOpacity>}
 
           {/* Recent Products */}
           <View style={styles.rowBetween}>
@@ -295,6 +301,10 @@ export default function RentCrop() {
             </Text>
           )}
 
+
+
+           <FavoriteFarmers title="NearBy Farmers" />
+
           {/* Recent Messages */}
           <Text style={styles.sectionTitle}>Recent Messages</Text>
           {messages.map((msg) => (
@@ -312,6 +322,8 @@ export default function RentCrop() {
               <Text style={styles.msgTime}>{msg.time}</Text>
             </View>
           ))}
+
+         
         </ScrollView>
       </KeyboardAvoidingView>
 

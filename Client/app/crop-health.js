@@ -137,62 +137,84 @@ const CropHealthScreen = () => {
 
   // Enhanced AI analysis function that stores results
   const analyzeCropImage = async (imageUri) => {
+  try {
     setIsAnalyzing(true);
-    
-    // Simulate AI analysis delay
-    setTimeout(() => {
-      setIsAnalyzing(false);
-      
-      // Mock analysis results with more variety
-      const mockResults = {
-        issues: ['Leaf Smut', 'Early signs of nutrient deficiency'],
-        recommendations: ['Apply fungicide', 'Increase nitrogen fertilizer', 'Improve drainage'],
-        confidence: '87%',
-        healthScore: Math.floor(Math.random() * 30) + 60, // Random score between 60-90
-        ph: (Math.random() * 2 + 6).toFixed(1), // Random pH between 6.0-8.0
-      };
 
-      // Determine status based on health score
-      let status = 'Healthy';
-      let statusColor = '#4CAF50';
-      if (mockResults.healthScore < 70) {
-        status = 'At Risk';
-        statusColor = '#FF9800';
-      }
-      if (mockResults.healthScore < 50) {
-        status = 'Critical';
-        statusColor = '#F44336';
-      }
+    const formData = new FormData();
+    formData.append('image', {
+      uri: imageUri,
+      type: 'image/jpeg',
+      name: 'crop.jpg',
+    });
 
-      // Create new analyzed crop entry
-      const newAnalyzedCrop = {
-        id: Date.now(), // Use timestamp as unique ID
-        name: `Analyzed Crop ${analyzedCrops.length + 1}`,
-        location: 'AI Scanned Area',
-        healthScore: mockResults.healthScore,
-        status: status,
-        statusColor: statusColor,
-        temperature: mockResults.ph,
-        issues: mockResults.issues.join(', '),
-        imageUri: imageUri, // Store the actual image URI
-        isAnalyzed: true,
-        timestamp: new Date(),
-        analysisResults: mockResults,
-      };
+    const response = await fetch('http://192.168.91.198:5000/api/analysis', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
 
-      // Add to analyzed crops (most recent first)
-      setAnalyzedCrops(prevCrops => [newAnalyzedCrop, ...prevCrops]);
-      
-      Alert.alert(
-        'Analysis Complete',
-        `Issues:\n• ${mockResults.issues.join('\n• ')}\n\nRecommendations:\n• ${mockResults.recommendations.join('\n• ')}\n\nConfidence: ${mockResults.confidence}`,
-        [
-          { text: 'Save Report', onPress: () => console.log('Report saved') },
-          { text: 'OK' }
-        ]
-      );
-    }, 3000);
-  };
+    const data = await response.json();
+
+    if (!response.ok || data.error) {
+      throw new Error(data.error || 'Failed to analyze crop');
+    }
+
+    const { disease, confidence, recommendations } = data;
+
+    const healthScore = Math.floor(60 + Math.random() * 30); // 60-90 mock score
+
+    let status = 'Healthy';
+    let statusColor = '#4CAF50';
+    if (healthScore < 70) {
+      status = 'At Risk';
+      statusColor = '#FF9800';
+    }
+    if (healthScore < 50) {
+      status = 'Critical';
+      statusColor = '#F44336';
+    }
+
+    const newAnalyzedCrop = {
+      id: Date.now(),
+      name: `Analyzed Crop ${analyzedCrops.length + 1}`,
+      location: 'AI Scanned Area',
+      healthScore,
+      status,
+      statusColor,
+      temperature: (Math.random() * 2 + 6).toFixed(1),
+      issues: disease,
+      imageUri,
+      isAnalyzed: true,
+      timestamp: new Date(),
+      analysisResults: {
+        disease,
+        confidence,
+        recommendations,
+      },
+    };
+
+    setAnalyzedCrops(prev => [newAnalyzedCrop, ...prev]);
+    setIsAnalyzing(false);
+
+    Alert.alert(
+      'Analysis Complete',
+      `Issues:\n• ${disease}\n\nRecommendations:\n• ${recommendations.join('\n• ')}\n\nConfidence: ${confidence}%`,
+      [
+        { text: 'Save Report', onPress: () => console.log('Report saved') },
+        { text: 'OK' },
+      ]
+    );
+  } catch (err) {
+    console.error(err);
+    setIsAnalyzing(false);
+    Alert.alert('Error', err.message || 'Something went wrong');
+  }
+};
+
+
+
 
   // Handle scan button press
   const handleScanPress = () => {

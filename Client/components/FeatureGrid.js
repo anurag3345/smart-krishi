@@ -2,10 +2,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { StyleSheet, Text, View, TouchableOpacity, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import { useSelector } from "react-redux";
+import { AuthContext } from "../context/AuthContext";
+import { useContext } from "react";
 
 const { width } = Dimensions.get('window');
 
 export default function FeatureGrid({ items }) {
+  const { user } = useContext(AuthContext);
   const router = useRouter();
   const language = useSelector((state) => state.language.value);
 
@@ -15,6 +18,7 @@ export default function FeatureGrid({ items }) {
       "Crop Health": language === "NP" ? "बाली स्वास्थ्य" : "Crop Health",
       "Sell Produce": language === "NP" ? "बिक्री गर्नुहोस्" : "Sell Produce",
       "Rent Tools": language === "NP" ? "उपकरण भाडामा" : "Rent Tools",
+      "Buy Produce": language === "NP" ? "किन्नुहोस्" : "Buy Produce",
     };
     return translations[item.title] || item.title;
   };
@@ -25,6 +29,8 @@ export default function FeatureGrid({ items }) {
     } else if (title === "Crop Health") {
       router.push("/crop-health");
     } else if (title === "Sell Produce") {
+      router.push("/RentCrop");
+    } else if (title === "My Purchases") {
       router.push("/RentCrop");
     } else {
       router.push("/RentMachine");
@@ -41,10 +47,20 @@ export default function FeatureGrid({ items }) {
     return colorSchemes[index % colorSchemes.length];
   };
 
+  // 🔒 Filter items based on role
+  const filteredItems = items.filter((item) => {
+    if (user?.role === "user") {
+      return item.title === "My Crops" || item.title === "My Purchases";
+    } else if (user?.role === "farmer") {
+      return ["My Crops", "Crop Health", "Sell Produce", "Rent Tools"].includes(item.title);
+    }
+    return false; // Show nothing if role not matched
+  });
+
   return (
     <View style={styles.container}>
       <View style={styles.grid}>
-        {items.map((item, index) => {
+        {filteredItems.map((item, index) => {
           const colors = getColors(index);
           return (
             <TouchableOpacity
@@ -56,9 +72,9 @@ export default function FeatureGrid({ items }) {
               <View style={[styles.iconContainer, { backgroundColor: colors.icon }]}>
                 <Ionicons name={item.icon} size={24} color="#FFFFFF" />
               </View>
-              
+
               <Text style={styles.title}>{getTitle(item)}</Text>
-              
+
               <View style={styles.arrow}>
                 <Ionicons name="chevron-forward" size={16} color="#666" />
               </View>
@@ -111,7 +127,7 @@ const styles = StyleSheet.create({
   arrow: {
     position: 'absolute',
     bottom: 16,
-    right: 16,
+    right: 10,
     width: 24,
     height: 24,
     borderRadius: 12,

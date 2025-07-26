@@ -19,6 +19,8 @@ export const AuthProvider = ({ children }) => {
         if (storedToken && storedUser) {
           setToken(storedToken);
           setUser(JSON.parse(storedUser));
+          console.log("Token loaded:", storedToken);
+          console.log("User loaded:", JSON.parse(storedUser));
         }
 
       } catch (e) {
@@ -37,9 +39,12 @@ export const AuthProvider = ({ children }) => {
     // Save to AsyncStorage
     await AsyncStorage.setItem('@token', token);
     await AsyncStorage.setItem('@user', JSON.stringify(userData));
+    console.log("Signed in with token:", token);
+    console.log("User data:", userData);
   };
 
   const signOut = async () => {
+    console.log("Signing out:", user);
     setToken(null);
     setUser(null);
     await AsyncStorage.removeItem('@token');

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 import { FontAwesome5 } from "@expo/vector-icons";
 import MachineForm from "../components/MachineForm"; // Adjust path accordingly
 import RentMachineDetail from "../components/RentMachineOrder"; // Import the new detail component
+import { AuthContext } from "../context/AuthContext";
 
 const activeListing = {
   name: "Tractor Model X1",
@@ -81,6 +82,7 @@ function Chip({ label, active, onPress }) {
 }
 
 export default function RentMachine() {
+  const {user}  = useContext(AuthContext)
   const [machines, setMachines] = useState(initialRecentMachines);
   const [searchText, setSearchText] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("All");
@@ -182,8 +184,8 @@ export default function RentMachine() {
           </ScrollView>
 
           {/* My Active Listings */}
-          <Text style={styles.sectionTitle}>My Active Listings</Text>
-          <View style={styles.listingCard}>
+          {user?.role === 'farmer' && <Text style={styles.sectionTitle}>My Active Listings</Text>}
+          {user?.role === 'farmer' &&           <View style={styles.listingCard}>
             <FontAwesome5 name="tractor" size={22} color="#6c97eb" style={{ marginRight: 12 }} />
             <View style={{ flex: 1 }}>
               <Text style={styles.listingTitle}>{activeListing.name}</Text>
@@ -197,13 +199,13 @@ export default function RentMachine() {
                 </Text>
               </View>
             </View>
-          </View>
+          </View>}
 
           {/* List Your Machine Button */}
-          <TouchableOpacity style={styles.listProductBtn} onPress={() => setModalVisible(true)}>
+          {user?.role === 'farmer' &&           <TouchableOpacity style={styles.listProductBtn} onPress={() => setModalVisible(true)}>
             <Text style={styles.listProductText}>List Your Machine</Text>
             <FontAwesome5 name="plus" size={16} color="#fff" style={{ marginLeft: 8 }} />
-          </TouchableOpacity>
+          </TouchableOpacity>}
 
           {/* Recent Machines */}
           <View style={styles.rowBetween}>
