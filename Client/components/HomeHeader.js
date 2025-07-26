@@ -73,7 +73,7 @@ export default function HomeHeader() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#4CAF50',
-    paddingTop: 20, // Account for status bar
+    paddingTop: 30, // Account for status bar
     paddingBottom: 20,
     paddingHorizontal: 20,
     borderBottomLeftRadius: 24,

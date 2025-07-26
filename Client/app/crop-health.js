@@ -547,7 +547,7 @@ const CropHealthScreen = () => {
               <View style={[styles.statusDot, { backgroundColor: '#4CAF50' }]} />
               <Text style={styles.statusLabel}>Overall Health</Text>
             </View>
-            <Text style={styles.statusValue}>85%</Text>
+            <Text style={styles.statusValue}>70%</Text>
           </View>
           
           <View style={styles.statusCard}>
@@ -555,7 +555,7 @@ const CropHealthScreen = () => {
               <View style={[styles.statusDot, { backgroundColor: '#FF9800' }]} />
               <Text style={styles.statusLabel}>Risk Level</Text>
             </View>
-            <Text style={styles.statusValue}>Low</Text>
+            <Text style={styles.statusValue}>Medium</Text>
           </View>
         </View>
 

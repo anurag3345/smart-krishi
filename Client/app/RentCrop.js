@@ -19,6 +19,51 @@ import { useNavigation } from "@react-navigation/native";
 import { AuthContext } from "../context/AuthContext";
 import FavoriteFarmers from "../components/FavoriteFarmers";
 
+// Crop images mapping
+const cropImages = {
+  // Vegetables
+  "carrots": require("../assets/images/carrot.jpg"),
+  "spinach": require("../assets/images/spinach.jpg"),
+  "onions": require("../assets/crops/onion.jpg"),
+  "potatoes": require("../assets/crops/potato.jpg"),
+  "beans": require("../assets/images/beans.jpg"),
+  
+  // Fruits
+  "corn": require("../assets/images/corn.jpg"),
+  "wheat": require("../assets/crops/wheat.jpg"),
+  "rice": require("../assets/crops/rice.jpg"),
+  "apples": require("../assets/images/apple.jpg"),
+  "bananas": require("../assets/images/banana.jpg"),
+  
+  // Grains
+  "barley": require("../assets/images/barley.jpg"),
+  "oats": require("../assets/images/oats.jpg"),
+  
+  // Default fallback
+  "default": require("../assets/crops/wheat.jpg"),
+};
+
+// Helper function to get crop image
+const getCropImage = (cropName) => {
+  if (!cropName) return cropImages.default;
+  
+  // Convert crop name to lowercase and remove spaces for matching
+  const normalizedName = cropName.toLowerCase().replace(/\s+/g, '').replace(/[^a-zA-Z]/g, '');
+  
+  // Try to find exact match first
+  if (cropImages[normalizedName]) {
+    return cropImages[normalizedName];
+  }
+  
+  // Try partial matches
+  const cropKeys = Object.keys(cropImages);
+  const partialMatch = cropKeys.find(key => 
+    normalizedName.includes(key) || key.includes(normalizedName)
+  );
+  
+  return partialMatch ? cropImages[partialMatch] : cropImages.default;
+};
+
 const activeListing = {
   name: "Fresh Tomatoes",
   price: "₹45/kg",
@@ -31,11 +76,10 @@ const initialRecentProducts = [
   {
     id: "p1",
     category: "Vegetables",
-    icon: "carrot",
     name: "Organic Carrots",
     desc: "Fresh from farm",
     price: "₹35/kg",
-    available: 25, // Changed to number for quantity calculations
+    available: 25,
     unit: "kg",
     distance: "2.5 km",
     heart: false,
@@ -43,7 +87,6 @@ const initialRecentProducts = [
   {
     id: "p2",
     category: "Vegetables",
-    icon: "leaf",
     name: "Fresh Spinach",
     desc: "Pesticide-free",
     price: "₹25/kg",
@@ -55,7 +98,6 @@ const initialRecentProducts = [
   {
     id: "p3",
     category: "Fruits",
-    icon: "seedling",
     name: "Sweet Corn",
     desc: "Freshly harvested",
     price: "₹40/kg",
@@ -131,14 +173,6 @@ export default function RentCrop({ navigation }) {
       {
         id: `p${prev.length + 1}`,
         category: formData.category,
-        icon:
-          formData.imageUri && formData.imageUri.length > 0
-            ? formData.imageUri
-            : formData.category === "Vegetables"
-            ? "carrot"
-            : formData.category === "Fruits"
-            ? "seedling"
-            : "leaf",
         name: formData.productName,
         desc: formData.description || "",
         price: `₹${formData.pricePerUnit}/${formData.unit}`,
@@ -184,9 +218,9 @@ export default function RentCrop({ navigation }) {
       <View style={styles.topBar}>
         <TouchableOpacity
           style={styles.backButton}
-          onPress={() => navigate.pop(1)}
+          onPress={() => navigate('/(tabs)/home')}
         >
-          <FontAwesome5 name="arrow-left" size={20} color="#333" />
+          {/* <FontAwesome5 name="arrow-left" size={20} color="#333" /> */}
         </TouchableOpacity>
         <Text style={styles.topBarTitle}>Agricultural Market</Text>
         <TouchableOpacity style={styles.menuButton}>
@@ -255,11 +289,10 @@ export default function RentCrop({ navigation }) {
 
           {user?.role === 'farmer' &&           <View style={styles.listingCard}>
             <View style={styles.listingIconContainer}>
-              <FontAwesome5
-                name="pepper-hot"
-                size={24}
-                color="#fff"
-              />
+             <Image
+  source={require('../assets/images/tomato.jpg')}
+  style={{ width: 24, height: 24 }}
+/>
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.listingTitle}>{activeListing.name}</Text>
@@ -304,18 +337,11 @@ export default function RentCrop({ navigation }) {
             sortedProducts.map((item) => (
               <View style={styles.productCard} key={item.id}>
                 <View style={styles.productIconContainer}>
-                  {item.icon && (item.icon.startsWith("http") || item.icon.startsWith("file://")) ? (
-                    <Image
-                      source={{ uri: item.icon }}
-                      style={styles.productImage}
-                    />
-                  ) : (
-                    <FontAwesome5
-                      name={item.icon || "seedling"}
-                      size={24}
-                      color="#4CAF50"
-                    />
-                  )}
+                  <Image
+                    source={getCropImage(item.name)}
+                    style={styles.productImage}
+                    resizeMode="cover"
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.productTitle}>{item.name}</Text>
@@ -365,10 +391,6 @@ export default function RentCrop({ navigation }) {
               <Text style={styles.emptyStateSubtext}>Try adjusting your search or filters</Text>
             </View>
           )}
-
-
-
-           <FavoriteFarmers title="NearBy Farmers" />
 
 
 
@@ -428,7 +450,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 20,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
@@ -438,14 +460,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f8f8f8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  // backButton: {
+  //   width: 40,
+  //   height: 40,
+  //   borderRadius: 20,
+  //   backgroundColor: "#f8f8f8",
+  //   alignItems: "center",
+  //   justifyContent: "center",
+  // },
   topBarTitle: {
     fontSize: 18,
     fontWeight: "bold",
@@ -627,18 +649,19 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
   },
   productIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: "#f8f9fa",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 14,
+    overflow: "hidden",
   },
   productImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   productTitle: { 
     fontWeight: "bold", 

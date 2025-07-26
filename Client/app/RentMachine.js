@@ -18,12 +18,34 @@ import RentProduct from "../components/RentProduct"; // Renamed from RentMachine
 import { useNavigation } from "expo-router";
 import { AuthContext } from "../context/AuthContext";
 
+// Import machine images from assets
+const machineImages = {
+  tractor: require('../assets/machine/mini-tractor.jpeg'), // Update with actual filename
+  tiller: require('../assets/machine/rotavator.jpeg'),   // Update with actual filename
+  harvester: require('../assets/machine/combine-harvester.jpeg'), // Update with actual filename
+};
+
+// Helper function to get machine image based on category
+const getMachineImage = (category) => {
+  switch (category.toLowerCase()) {
+    case 'tractor':
+      return machineImages.tractor;
+    case 'tiller':
+      return machineImages.tiller;
+    case 'harvester':
+      return machineImages.harvester;
+    default:
+      return machineImages.tractor; // Default fallback
+  }
+};
+
 const activeListing = {
   name: "Tractor Model X1",
   price: "₹500/hour",
   available: "10 hours/day",
   views: 7,
   inquiries: 2,
+  image: machineImages.tractor, // Use tractor image for active listing
 };
 
 const initialRecentMachines = [
@@ -39,6 +61,7 @@ const initialRecentMachines = [
     maxHours: "5h/day",
     distance: "1.0 km",
     heart: false,
+    image: machineImages.tractor,
     specifications: {
       power: "18HP",
       fuelType: "Diesel",
@@ -58,6 +81,7 @@ const initialRecentMachines = [
     maxHours: "8h/day",
     distance: "2.7 km",
     heart: true,
+    image: machineImages.tiller,
     specifications: {
       width: "1.2m",
       power: "8HP",
@@ -77,6 +101,7 @@ const initialRecentMachines = [
     maxHours: "4h/day",
     distance: "3.8 km",
     heart: false,
+    image: machineImages.harvester,
     specifications: {
       power: "75HP",
       fuelType: "Diesel",
@@ -166,6 +191,10 @@ export default function RentMachine({ navigation }) {
         maxHours: `${formData.availabilityFrom} to ${formData.availabilityTo}`,
         distance: "0 km",
         heart: false,
+        // Use image from assets based on category, or custom image if provided
+        image: formData.imageUri && formData.imageUri.length > 0 
+          ? { uri: formData.imageUri } 
+          : getMachineImage(formData.category),
         specifications: {
           power: formData.power || "N/A",
           fuelType: formData.fuelType || "N/A",
@@ -212,7 +241,7 @@ export default function RentMachine({ navigation }) {
           style={styles.backButton}
           onPress={() => navigate.pop(1)}
         >
-          <FontAwesome5 name="arrow-left" size={20} color="#333" />
+          {/* <FontAwesome5 name="arrow-left" size={20} color="#333" /> */}
         </TouchableOpacity>
         <Text style={styles.topBarTitle}>Agricultural Equipment Rental</Text>
         <TouchableOpacity style={styles.menuButton}>
@@ -277,43 +306,37 @@ export default function RentMachine({ navigation }) {
 
           {/* My Active Listings */}
           {user?.role === 'farmer' && <Text style={styles.sectionTitle}>My Active Listings</Text>}
-          {user?.role === 'farmer' &&           <View style={styles.listingCard}>
-            <View style={styles.listingIconContainer}>
-              <FontAwesome5
-                name="tractor"
-                size={24}
-                color="#fff"
-              />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.listingTitle}>{activeListing.name}</Text>
-              <Text style={styles.listingSub}>
-                {activeListing.price} • {activeListing.available}
-              </Text>
-              <View style={styles.metaRow}>
-                <View style={styles.activeStatus}>
-                  <Text style={styles.activeText}>Active</Text>
-                </View>
-                <Text style={styles.metaInfo}>
-                  {activeListing.views} views • {activeListing.inquiries} inquiries
+          {user?.role === 'farmer' && (
+            <View style={styles.listingCard}>
+              <View style={styles.listingImageContainer}>
+                <Image
+                  source={activeListing.image}
+                  style={styles.listingImage}
+                  resizeMode="cover"
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.listingTitle}>{activeListing.name}</Text>
+                <Text style={styles.listingSub}>
+                  {activeListing.price} • {activeListing.available}
                 </Text>
+                <View style={styles.metaRow}>
+                  <View style={styles.activeStatus}>
+                    <Text style={styles.activeText}>Active</Text>
+                  </View>
+                  <Text style={styles.metaInfo}>
+                    {activeListing.views} views • {activeListing.inquiries} inquiries
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>}
+          )}
 
           {/* List Your Machine Button */}
-          {user?.role === 'farmer' &&           <TouchableOpacity
-            style={styles.listProductBtn}
-            onPress={() => setModalVisible(true)}
-          >
-            <FontAwesome5
-              name="plus"
-              size={18}
-              color="#fff"
-              style={{ marginRight: 10 }}
-            />
-            <Text style={styles.listProductText}>List Your Equipment</Text>
-          </TouchableOpacity>}
+          <TouchableOpacity style={styles.listProductBtn} onPress={() => setModalVisible(true)}>
+            <Text style={styles.listProductText}>List Your Machine</Text>
+            <FontAwesome5 name="plus" size={16} color="#fff" style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
 
           {/* Available Equipment */}
           <View style={styles.rowBetween}>
@@ -326,19 +349,12 @@ export default function RentMachine({ navigation }) {
           {sortedMachines.length > 0 ? (
             sortedMachines.map((item) => (
               <View style={styles.productCard} key={item.id}>
-                <View style={styles.productIconContainer}>
-                  {item.icon && (item.icon.startsWith("http") || item.icon.startsWith("file://")) ? (
-                    <Image
-                      source={{ uri: item.icon }}
-                      style={styles.productImage}
-                    />
-                  ) : (
-                    <FontAwesome5
-                      name={item.icon || "tools"}
-                      size={24}
-                      color="#4CAF50"
-                    />
-                  )}
+                <View style={styles.productImageContainer}>
+                  <Image
+                    source={item.image}
+                    style={styles.productImage}
+                    resizeMode="cover"
+                  />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.productTitle}>{item.name}</Text>
@@ -441,7 +457,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 20,
     backgroundColor: "#fff",
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
@@ -451,14 +467,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#f8f8f8",
-    alignItems: "center",
-    justifyContent: "center",
-  },
+
   topBarTitle: {
     fontSize: 18,
     fontWeight: "bold",
@@ -555,14 +564,18 @@ const styles = StyleSheet.create({
     elevation: 3,
     marginBottom: 16,
   },
-  listingIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#4CAF50",
-    alignItems: "center",
-    justifyContent: "center",
+  // Updated styles for listing image
+  listingImageContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    overflow: 'hidden',
     marginRight: 14,
+    backgroundColor: '#f0f0f0',
+  },
+  listingImage: {
+    width: '100%',
+    height: '100%',
   },
   listingTitle: { 
     fontSize: 16, 
@@ -639,19 +652,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  productIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#fff3e0",
-    alignItems: "center",
-    justifyContent: "center",
+  // Updated styles for product images
+  productImageContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 12,
+    overflow: 'hidden',
     marginRight: 14,
+    backgroundColor: '#f0f0f0',
   },
   productImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: '100%',
+    height: '100%',
   },
   productTitle: { 
     fontWeight: "bold", 

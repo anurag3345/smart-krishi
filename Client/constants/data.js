@@ -282,7 +282,7 @@ export const FavoriteFarmer= [
     image: require('../assets/images/farmer.jpg')
   },
   {
-    name: "Ram Sharma",
+    name: "Nirmal Thapa",
     location: "2.8 km",
     contact: "+91 9123456780",
     image: require('../assets/images/farmer.jpg')
@@ -294,13 +294,13 @@ export const FavoriteFarmer= [
     image: require('../assets/images/farmer.jpg')
   },
   {
-    name: "Lakshmi Patel",
+    name: "Hari Prasad Acharya",
     location: "0.9 km",
     contact: "+91 8877665544",
     image: require('../assets/images/farmer.jpg')
   },
   {
-    name: "Anil Sharma",
+    name: "Aeron Panta",
     location: "4.5 km",
     contact: "+91 7766554433",
     image: require('../assets/images/farmer.jpg')

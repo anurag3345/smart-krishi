@@ -6,11 +6,10 @@ import OfflineAlert from '../../components/OfflineAlert';
 import TipCard from '../../components/TipCard';
 import WeatherCard from '../../components/WeatherCard';
 import FAQSection from '../../components/FAQSection'; // New import
-import FaqSection from '../../components/FaqSection';
 import {
   farmingTips,
   featureGridItems,
-  greetingUser,
+  // greetingUser,
   weatherInfo,
   faqData, // New import
 } from '../../constants/data';
@@ -37,7 +36,6 @@ export default function HomeScreen() {
       {user?.role === 'user' &&       <RecentlyBrought/>}
       {user?.role === 'user' &&       <FavoriteFarmers/>}
           <WeatherCard weather={weatherInfo} />
-      <FaqSection/>
       {user?.role === 'farmer' &&           <TipCard tips={farmingTips} />}
           <FAQSection faqData={faqData} /> {/* New component */}
         </ScrollView>
