@@ -1,0 +1,14 @@
+.venv/
+temp_uploads/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.env
+*.DS_Store
+*.vscode/
+
+        
