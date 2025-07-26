@@ -15,14 +15,15 @@ export default function Register() {
   const router = useRouter();
   const { signIn } = useContext(AuthContext);
 
-  const [username, setUsername] = useState('');
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone,setPhone] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!username || !email || !password) {
-      Alert.alert('Validation', 'Please enter username, email, and password');
+    if (!name || !email || !password || !phone) {
+      Alert.alert('Validation', 'Please enter username, email, password and phone');
       return;
     }
 
@@ -32,7 +33,7 @@ export default function Register() {
       const response = await fetch('https://192.168.91.198/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password }),
+        body: JSON.stringify({ name, email, password,phone }),
       });
 
       const data = await response.json();
@@ -59,8 +60,8 @@ export default function Register() {
       <TextInput
         placeholder="Username"
         autoCapitalize="none"
-        value={username}
-        onChangeText={setUsername}
+        value={name}
+        onChangeText={setName}
         style={styles.input}
       />
 
@@ -78,6 +79,14 @@ export default function Register() {
         secureTextEntry
         value={password}
         onChangeText={setPassword}
+        style={styles.input}
+      />
+
+      <TextInput
+        placeholder="PhoneNo"
+        secureTextEntry
+        value={phone}
+        onChangeText={setPhone}
         style={styles.input}
       />
 

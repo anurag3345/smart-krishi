@@ -20,7 +20,7 @@ export default function RootLayout() {
             <StatusBar style="dark" />
           </View>
         </SafeAreaProvider>
+            </Provider>
     </AuthProvider>
-    </Provider>
   );
 }
