@@ -87,7 +87,7 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://192.168.91.198:5000/api/auth/register', {
+      const response = await fetch('https://x8ki-letl-twmt.n7.xano.io/api:peXEijAv/auth/signup', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

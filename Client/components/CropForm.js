@@ -16,6 +16,8 @@ import { Picker } from "@react-native-picker/picker";
 import Checkbox from "expo-checkbox";
 import * as ImagePicker from "expo-image-picker";
 import { FontAwesome5 } from "@expo/vector-icons";
+import { listProduct } from '../services/product'; 
+import Toast from 'react-native-toast-message';
 
 const categoryOptions = ["Vegetables", "Fruits", "Grains"];
 const unitOptions = ["kg", "ton"];
@@ -76,41 +78,71 @@ export default function CropForm({ visible, onClose, onSubmit }) {
     }
   };
 
-  const handleSubmit = () => {
-    if (!productName.trim()) {
-      Alert.alert("Validation", "Please enter product name");
-      return;
-    }
-    const quantityNum = Number(quantity);
-    if (!quantity || isNaN(quantityNum) || quantityNum <= 20) {
-      Alert.alert("Validation", "Quantity must be a number greater than 20");
-      return;
-    }
-    if (!pricePerUnit || isNaN(Number(pricePerUnit))) {
-      Alert.alert("Validation", "Please enter valid price per unit");
-      return;
-    }
-    if (!location.trim()) {
-      Alert.alert("Validation", "Please enter location");
-      return;
-    }
+  const handleSubmit = async () => {
+  if (!productName.trim()) {
+    Alert.alert("Validation", "Please enter product name");
+    return;
+  }
+  const quantityNum = Number(quantity);
+  if (!quantity || isNaN(quantityNum) || quantityNum <= 20) {
+    Alert.alert("Validation", "Quantity must be a number greater than 20");
+    return;
+  }
+  if (!pricePerUnit || isNaN(Number(pricePerUnit))) {
+    Alert.alert("Validation", "Please enter valid price per unit");
+    return;
+  }
+  if (!location.trim()) {
+    Alert.alert("Validation", "Please enter location");
+    return;
+  }
 
-    const formData = {
-      productName,
-      category,
-      quantity,
-      unit,
-      pricePerUnit,
-      location,
-      deliveryHome,
-      deliveryPickup,
-      description,
-      imageUri: image,
-    };
-
-    onSubmit(formData);
-    onClose();
+  // Prepare the form data
+  const formData = {
+    name: productName,
+    type: category,
+    quantity: quantity,
+    unit: unit,
+    price: pricePerUnit,
+    location: location,
+    delivery_home: deliveryHome,
+    delivery_pickup: deliveryPickup,
+    description: description,
+    image_url: image,
+    user_id: "some_user_id_here", // Replace with actual user_id
   };
+
+  try {
+    // Call the API function with the form data
+    setLoading(true);
+    await listProduct(formData);
+
+    // Show success toast
+    Toast.show({
+      type: 'success',
+      position: 'bottom',
+      text1: 'Product Listed!',
+      text2: 'Your product has been listed successfully.',
+      visibilityTime: 4000,
+      autoHide: true,
+    });
+  } catch (error) {
+    // Show error toast
+    Toast.show({
+      type: 'error',
+      position: 'bottom',
+      text1: 'Error',
+      text2: 'Something went wrong. Please try again.',
+      visibilityTime: 4000,
+      autoHide: true,
+    });
+  } finally {
+    setLoading(false);
+  }
+
+  // Close the form after submitting
+  onClose();
+};
 
   return (
     <Modal visible={visible} animationType="slide" transparent>
