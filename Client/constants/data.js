@@ -13,33 +13,132 @@ export const featureGridItems = [
   { id: '5', title: 'My Purchases', icon: 'basket-outline', bgColor: '#f3e5f5' }, 
 ];
 
-
-export const weatherInfo = {
-  location: 'Kathmandu',
-  temperature: '27°C',
-  condition: 'Partly Cloudy',
-  icon: 'partly-sunny-outline',
-  forecast: [
-    { time: 'Now', temp: '27°C', icon: 'sunny-outline' },
-    { time: '12 PM', temp: '29°C', icon: 'sunny-outline' },
-    { time: '3 PM', temp: '28°C', icon: 'cloud-outline' },
-    { time: '6 PM', temp: '25°C', icon: 'rainy-outline' },
-  ],
-};
-
 export const farmingTips = [
   {
     id: '1',
     title: 'Best practices for tomato cultivation',
+    titleNP: 'टमाटर खेतीका लागि उत्तम अभ्यासहरू',
     description: 'Learn how to maximize your tomato yield with these expert tips',
+    descriptionNP: 'यी विशेषज्ञ सुझावहरूले तपाईंको टमाटरको उत्पादन कसरी बढाउने भन्ने कुरा सिक्नुहोस्',
     date: '2 days ago',
+    dateNP: '२ दिन अघि',
+    category: 'Vegetables',
+    categoryNP: 'तरकारी',
   },
   {
     id: '2',
     title: 'Monsoon preparation for your crops',
+    titleNP: 'तपाईंका बालीहरूका लागि मनसुन तयारी',
     description: 'Protect your farm with these monsoon-ready techniques',
+    descriptionNP: 'यी मनसुन-तयार प्रविधिहरूले तपाईंको खेतलाई सुरक्षित राख्नुहोस्',
     date: '5 days ago',
+    dateNP: '५ दिन अघि',
+    category: 'Weather Management',
+    categoryNP: 'मौसम व्यवस्थापन',
   },
+];
+
+export const faqData = [
+  {
+    question: {
+      nepali: "स्मार्ट कृषि के हो?",
+      english: "What is Smart Krishi?"
+    },
+    answer: {
+      nepali: "स्मार्ट कृषि एक डिजिटल प्लेटफर्म हो जसले किसानहरूलाई आधुनिक खेती गर्न मद्दत गर्छ। यसमा मौसम जानकारी, बाली निगरानी, र कृषि सल्लाह समावेश छ।",
+      english: "Smart Krishi is a digital platform that helps farmers with modern farming techniques, including weather information, crop monitoring, and agricultural advice."
+    }
+  },
+  {
+    question: {
+      nepali: "बाली जीवन चक्र निगरानी कसरी काम गर्छ?",
+      english: "How does crop lifecycle monitoring work?"
+    },
+    answer: {
+      nepali: "हाम्रो एप्पले तपाईंको बालीको बीउ छर्ने देखि काट्ने सम्मको सम्पूर्ण यात्रा ट्र्याक गर्छ। यसले बाली बृद्धिको चरणहरू, आवश्यक हेरचाह, र सही समयमा कुन काम गर्ने भन्ने जानकारी दिन्छ।",
+      english: "Our app tracks your crop's complete journey from sowing to harvesting, providing growth stage information, care requirements, and timely farming activities."
+    }
+  },
+  {
+    question: {
+      nepali: "नेपाली भाषा सपोर्ट छ?",
+      english: "Is Nepali language supported?"
+    },
+    answer: {
+      nepali: "हो, हाम्रो एप्प पूर्ण रूपमा नेपाली भाषामा उपलब्ध छ। सबै फिचरहरू, निर्देशनहरू, र जानकारी नेपालीमा पाउन सकिन्छ। तपाईं सेटिङमा गएर भाषा परिवर्तन गर्न सक्नुहुन्छ।",
+      english: "Yes, our app is fully available in Nepali language. All features, instructions, and information are available in Nepali. You can change the language in settings."
+    }
+  },
+  {
+    question: {
+      nepali: "मौसम पूर्वानुमान कत्ति सही छ?",
+      english: "How accurate is the weather forecast?"
+    },
+    answer: {
+      nepali: "हामी विश्वसनीय मौसम डाटा प्रदायकहरूसँग काम गर्छौं र स्थानीय मौसम स्टेशनहरूबाट जानकारी लिन्छौं। सामान्यतया ३-५ दिनको पूर्वानुमान ८५-९०% सही हुन्छ।",
+      english: "We work with reliable weather data providers and local weather stations. Generally, 3-5 day forecasts are 85-90% accurate."
+    }
+  },
+  {
+    question: {
+      nepali: "अफलाइन मोडमा एप्प काम गर्छ?",
+      english: "Does the app work in offline mode?"
+    },
+    answer: {
+      nepali: "केही फिचरहरू अफलाइन उपलब्ध छन् जस्तै पहिले सेभ गरिएको डाटा, कृषि टिप्स, र बाली क्यालेन्डर। तर मौसम अपडेट र रियल-टाइम सल्लाहको लागि इन्टरनेट आवश्यक छ।",
+      english: "Some features are available offline like previously saved data, farming tips, and crop calendar. However, internet is required for weather updates and real-time advice."
+    }
+  },
+  {
+    question: {
+      nepali: "एप्प प्रयोग गर्न शुल्क लाग्छ?",
+      english: "Is there a fee to use the app?"
+    },
+    answer: {
+      nepali: "आधारभूत फिचरहरू नि:शुल्क छन्। प्रिमियम फिचरहरू जस्तै विस्तृत बाली विश्लेषण र व्यक्तिगत सल्लाहको लागि मासिक सदस्यता शुल्क छ।",
+      english: "Basic features are free. Premium features like detailed crop analysis and personalized advice require a monthly subscription."
+    }
+  },
+  {
+    question: {
+      nepali: "कुन कुन बालीहरूको जानकारी पाइन्छ?",
+      english: "Which crops information is available?"
+    },
+    answer: {
+      nepali: "धान, गहूं, मकै, आलु, तरकारी, फलफूल लगायत नेपालका मुख्य बालीहरूको विस्तृत जानकारी उपलब्ध छ। नयाँ बालीहरू नियमित रूपमा थपिंदैछन्।",
+      english: "Information for major Nepali crops including rice, wheat, corn, potato, vegetables, and fruits is available. New crops are regularly being added."
+    }
+  },
+  {
+    question: {
+      nepali: "डाटा सुरक्षित छ?",
+      english: "Is my data secure?"
+    },
+    answer: {
+      nepali: "हो, तपाईंको व्यक्तिगत जानकारी र खेती डाटा पूर्ण रूपमा सुरक्षित छ। हामी कडा डाटा सुरक्षा नीति पालना गर्छौं र तेस्रो पक्षसँग जानकारी साझा गर्दैनौं।",
+      english: "Yes, your personal information and farming data is completely secure. We follow strict data security policies and don't share information with third parties."
+    }
+  },
+  {
+    question: {
+      nepali: "स्मार्ट कृषिका मुख्य फिचरहरू के के छन्?",
+      english: "What are the main features of Smart Krishi?"
+    },
+    answer: {
+      nepali: "मुख्य फिचरहरूमा बाली निगरानी, मौसम पूर्वानुमान, कृषि सल्लाह, रोग पहिचान, बजार मूल्य जानकारी, र किसान समुदाय नेटवर्क समावेश छ।",
+      english: "Main features include crop monitoring, weather forecast, agricultural advice, disease identification, market price information, and farmer community network."
+    }
+  },
+  {
+    question: {
+      nepali: "नयाँ किसानहरूका लागि कस्तो सहायता छ?",
+      english: "What support is available for new farmers?"
+    },
+    answer: {
+      nepali: "नयाँ किसानहरूका लागि विशेष ट्यूटोरियल, चरणबद्ध गाइड, र विशेषज्ञ सल्लाह उपलब्ध छ। साथै २४/७ हेल्पलाइन सेवा पनि छ।",
+      english: "Special tutorials, step-by-step guides, and expert advice are available for new farmers. Additionally, there's a 24/7 helpline service."
+    }
+  }
 ];
 
 export const marketProducts = [
@@ -98,42 +197,7 @@ export const alertsList = [
     time: '5d ago',
     color: '#e67e22',
     icon: 'calendar-outline',
-  },
-  {
-    id: '6',
-    title: 'Strong Winds Expected Tomorrow',
-    time: '8h ago',
-    color: '#95a5a6',
-    icon: 'cloudy-outline',
-  },
-  {
-    id: '7',
-    title: 'New Crop Disease Detected',
-    time: '30m ago',
-    color: '#c0392b',
-    icon: 'medkit-outline',
-  },
-  {
-    id: '8',
-    title: 'Irrigation System Maintenance',
-    time: '1d ago',
-    color: '#16a085',
-    icon: 'construct-outline',
-  },
-  {
-    id: '9',
-    title: 'Market Prices Updated',
-    time: '12h ago',
-    color: '#27ae60',
-    icon: 'bar-chart-outline',
-  },
-  {
-    id: '10',
-    title: 'Equipment Rental Offers Available',
-    time: '3d ago',
-    color: '#8e44ad',
-    icon: 'pricetag-outline',
-  },
+  }
 ];
 
 
