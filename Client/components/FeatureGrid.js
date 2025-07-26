@@ -16,6 +16,10 @@ export default function FeatureGrid({ items }) {
               router.push('/my-crops'); 
             } else if (item.title === 'Crop Health'){
               router.push('/crop-health')
+            } else if(item.title === 'Sell Produce'){
+              router.push('/RentCrop')
+            }else{
+              router.push('/RentMachine')
             }
           }}
         >

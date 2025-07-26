@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,25 @@ import {
   SafeAreaView,
   StatusBar,
   Image,
+  Alert,
+  Modal,
 } from 'react-native';
-import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons,  } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
+import { Camera } from 'expo-camera';
 
 const CropHealthScreen = () => {
   const router = useRouter();
+  const [scannedImage, setScannedImage] = useState(null);
+  const [showCameraOptions, setShowCameraOptions] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  
+  // State to store analyzed crops
+  const [analyzedCrops, setAnalyzedCrops] = useState([]);
 
-  const cropHealthData = [
+  // Initial static crops data
+  const initialCropsData = [
     {
       id: 1,
       name: 'Tomato Field A',
@@ -27,6 +38,8 @@ const CropHealthScreen = () => {
       issues: 'None detected',
       icon: '🍅',
       image: 'tomato-field',
+      isAnalyzed: false,
+      timestamp: new Date('2024-01-15'),
     },
     {
       id: 2,
@@ -39,8 +52,157 @@ const CropHealthScreen = () => {
       issues: 'Nutrient deficiency',
       icon: '🌾',
       image: 'wheat-field',
+      isAnalyzed: false,
+      timestamp: new Date('2024-01-10'),
     },
   ];
+
+  // Request camera permissions
+  const requestCameraPermissions = async () => {
+    const { status } = await Camera.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Camera permission is required to scan crops. Please enable it in settings.',
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+    return true;
+  };
+
+  // Request media library permissions
+  const requestMediaPermissions = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert(
+        'Permission Required',
+        'Photo library permission is required to select images. Please enable it in settings.',
+        [{ text: 'OK' }]
+      );
+      return false;
+    }
+    return true;
+  };
+
+  // Handle camera capture
+  const handleTakePhoto = async () => {
+    setShowCameraOptions(false);
+    
+    const hasPermission = await requestCameraPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setScannedImage(result.assets[0].uri);
+        analyzeCropImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.log('Camera error:', error);
+      Alert.alert('Error', 'Failed to take photo. Please try again.');
+    }
+  };
+
+  // Handle gallery selection
+  const handleSelectFromGallery = async () => {
+    setShowCameraOptions(false);
+    
+    const hasPermission = await requestMediaPermissions();
+    if (!hasPermission) return;
+
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setScannedImage(result.assets[0].uri);
+        analyzeCropImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.log('Gallery error:', error);
+      Alert.alert('Error', 'Failed to select image. Please try again.');
+    }
+  };
+
+  // Enhanced AI analysis function that stores results
+  const analyzeCropImage = async (imageUri) => {
+    setIsAnalyzing(true);
+    
+    // Simulate AI analysis delay
+    setTimeout(() => {
+      setIsAnalyzing(false);
+      
+      // Mock analysis results with more variety
+      const mockResults = {
+        issues: ['Leaf Smut', 'Early signs of nutrient deficiency'],
+        recommendations: ['Apply fungicide', 'Increase nitrogen fertilizer', 'Improve drainage'],
+        confidence: '87%',
+        healthScore: Math.floor(Math.random() * 30) + 60, // Random score between 60-90
+        ph: (Math.random() * 2 + 6).toFixed(1), // Random pH between 6.0-8.0
+      };
+
+      // Determine status based on health score
+      let status = 'Healthy';
+      let statusColor = '#4CAF50';
+      if (mockResults.healthScore < 70) {
+        status = 'At Risk';
+        statusColor = '#FF9800';
+      }
+      if (mockResults.healthScore < 50) {
+        status = 'Critical';
+        statusColor = '#F44336';
+      }
+
+      // Create new analyzed crop entry
+      const newAnalyzedCrop = {
+        id: Date.now(), // Use timestamp as unique ID
+        name: `Analyzed Crop ${analyzedCrops.length + 1}`,
+        location: 'AI Scanned Area',
+        healthScore: mockResults.healthScore,
+        status: status,
+        statusColor: statusColor,
+        temperature: mockResults.ph,
+        issues: mockResults.issues.join(', '),
+        imageUri: imageUri, // Store the actual image URI
+        isAnalyzed: true,
+        timestamp: new Date(),
+        analysisResults: mockResults,
+      };
+
+      // Add to analyzed crops (most recent first)
+      setAnalyzedCrops(prevCrops => [newAnalyzedCrop, ...prevCrops]);
+      
+      Alert.alert(
+        'Analysis Complete',
+        `Issues:\n• ${mockResults.issues.join('\n• ')}\n\nRecommendations:\n• ${mockResults.recommendations.join('\n• ')}\n\nConfidence: ${mockResults.confidence}`,
+        [
+          { text: 'Save Report', onPress: () => console.log('Report saved') },
+          { text: 'OK' }
+        ]
+      );
+    }, 3000);
+  };
+
+  // Handle scan button press
+  const handleScanPress = () => {
+    setShowCameraOptions(true);
+  };
+
+  // Combine analyzed crops with initial data, with analyzed crops first
+  const getAllCrops = () => {
+    return [...analyzedCrops, ...initialCropsData];
+  };
 
   const alerts = [
     {
@@ -92,43 +254,52 @@ const CropHealthScreen = () => {
 
   const CropHealthCard = ({ crop }) => (
     <TouchableOpacity style={styles.cropHealthCard} activeOpacity={0.7}>
-      <View style={styles.cropImageContainer}>
-        <Text style={styles.cropCardIcon}>{crop.icon}</Text>
+      {/* Top section with name, location and status */}
+      <View style={styles.cropHealthHeader}>
+        <View style={styles.cropNameContainer}>
+          <Text style={styles.cropHealthName}>{crop.name}</Text>
+          <Text style={styles.cropLocation}>{crop.location}</Text>
+          {crop.isAnalyzed && (
+            <View style={styles.analyzedBadge}>
+              <Ionicons name="sparkles" size={12} color="#673AB7" />
+              <Text style={styles.analyzedText}>AI Analyzed</Text>
+            </View>
+          )}
+        </View>
+        <View style={[styles.statusBadge, { backgroundColor: crop.statusColor }]}>
+          <Text style={styles.statusText}>{crop.status}</Text>
+        </View>
       </View>
       
-      <View style={styles.cropHealthInfo}>
-        <View style={styles.cropHealthHeader}>
-          <View>
-            <Text style={styles.cropHealthName}>{crop.name}</Text>
-            <Text style={styles.cropLocation}>{crop.location}</Text>
-          </View>
-          <View style={[styles.statusBadge, { backgroundColor: crop.statusColor }]}>
-            <Text style={styles.statusText}>{crop.status}</Text>
-          </View>
+      {/* Bottom section with icon/image, pH, and issues in same row */}
+      <View style={styles.cropMetricsRow}>
+        <View style={styles.cropIconContainer}>
+          {crop.isAnalyzed && crop.imageUri ? (
+            <Image source={{ uri: crop.imageUri }} style={styles.cropImage} />
+          ) : (
+            <Text style={styles.cropCardIcon}>{crop.icon}</Text>
+          )}
         </View>
         
-        <View style={styles.cropHealthMetrics}>
-          <View style={styles.healthScoreSection}>
-            <HealthScoreCircle score={crop.healthScore} size={50} />
-            <Text style={styles.healthScoreLabel}>Health Score</Text>
-          </View>
-          
-          <View style={styles.metricsColumn}>
-            <View style={styles.metricItem}>
-              <Text style={styles.metricValue}>{crop.temperature}</Text>
-              <Text style={styles.metricLabel}>pH Level</Text>
-            </View>
-            <View style={styles.metricItem}>
-              <Text style={styles.issuesText}>{crop.issues}</Text>
-              <Text style={styles.metricLabel}>Issues</Text>
-            </View>
-          </View>
+        <View style={styles.metricContainer}>
+          <Text style={styles.metricValue}>{crop.temperature}</Text>
+          <Text style={styles.metricLabel}>pH Level</Text>
         </View>
+        
+        <View style={styles.issuesContainer}>
+          <Text style={[
+            styles.issuesText, 
+            { color: crop.issues === 'None detected' ? '#4CAF50' : '#FF9800' }
+          ]}>
+            {crop.issues.length > 15 ? crop.issues.substring(0, 15) + '...' : crop.issues}
+          </Text>
+          <Text style={styles.metricLabel}>Issues</Text>
+        </View>
+        
+        <TouchableOpacity style={styles.expandButton}>
+          <Ionicons name="chevron-forward" size={20} color="#666" />
+        </TouchableOpacity>
       </View>
-      
-      <TouchableOpacity style={styles.expandButton}>
-        <Ionicons name="chevron-forward" size={20} color="#666" />
-      </TouchableOpacity>
     </TouchableOpacity>
   );
 
@@ -192,7 +363,7 @@ const CropHealthScreen = () => {
         </View>
 
         {/* Quick Health Scan */}
-        <TouchableOpacity style={styles.quickScanCard}>
+        <TouchableOpacity style={styles.quickScanCard} onPress={handleScanPress}>
           <View style={styles.quickScanContent}>
             <View style={styles.scanIconContainer}>
               <Ionicons name="scan" size={24} color="#4CAF50" />
@@ -205,9 +376,25 @@ const CropHealthScreen = () => {
             </View>
           </View>
           <View style={styles.scanButton}>
-            <Text style={styles.scanButtonText}>Scan now</Text>
+            <Text style={styles.scanButtonText}>
+              {isAnalyzing ? 'Analyzing...' : 'Scan now'}
+            </Text>
           </View>
         </TouchableOpacity>
+
+        {/* Show scanned image if available */}
+        {scannedImage && (
+          <View style={styles.scannedImageContainer}>
+            <Text style={styles.scannedImageTitle}>Last Scanned Image</Text>
+            <Image source={{ uri: scannedImage }} style={styles.scannedImage} />
+            {isAnalyzing && (
+              <View style={styles.analyzingOverlay}>
+                <Ionicons name="sync" size={24} color="#4CAF50" />
+                <Text style={styles.analyzingText}>AI is analyzing your crop...</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Current Health Status */}
         <View style={styles.sectionHeader}>
@@ -245,9 +432,10 @@ const CropHealthScreen = () => {
         {/* My Crops Health */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>My Crops Health</Text>
+          <Text style={styles.cropCount}>{getAllCrops().length} Crops</Text>
         </View>
 
-        {cropHealthData.map((crop) => (
+        {getAllCrops().map((crop) => (
           <CropHealthCard key={crop.id} crop={crop} />
         ))}
 
@@ -275,6 +463,50 @@ const CropHealthScreen = () => {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+
+      {/* Camera Options Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={showCameraOptions}
+        onRequestClose={() => setShowCameraOptions(false)}
+      >
+        <View style={styles.modalBackground}>
+          <View style={styles.cameraOptionsContainer}>
+            <Text style={styles.cameraOptionsTitle}>Scan Crop</Text>
+            <Text style={styles.cameraOptionsSubtitle}>Choose how you want to capture your crop image</Text>
+            
+            <TouchableOpacity style={styles.cameraOption} onPress={handleTakePhoto}>
+              <View style={styles.cameraOptionIcon}>
+                <Ionicons name="camera" size={24} color="#4CAF50" />
+              </View>
+              <View style={styles.cameraOptionText}>
+                <Text style={styles.cameraOptionTitle}>Take Photo</Text>
+                <Text style={styles.cameraOptionDescription}>Use camera to capture crop image</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.cameraOption} onPress={handleSelectFromGallery}>
+              <View style={styles.cameraOptionIcon}>
+                <Ionicons name="images" size={24} color="#4CAF50" />
+              </View>
+              <View style={styles.cameraOptionText}>
+                <Text style={styles.cameraOptionTitle}>Choose from Gallery</Text>
+                <Text style={styles.cameraOptionDescription}>Select existing photo from gallery</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.cancelOptionButton} 
+              onPress={() => setShowCameraOptions(false)}
+            >
+              <Text style={styles.cancelOptionText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -283,6 +515,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+    paddingTop: 22,
   },
   header: {
     backgroundColor: '#4CAF50',
@@ -397,6 +630,47 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  // Scanned image styles
+  scannedImageContainer: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  scannedImageTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 12,
+  },
+  scannedImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    resizeMode: 'cover',
+  },
+  analyzingOverlay: {
+    position: 'absolute',
+    top: 40,
+    left: 16,
+    right: 16,
+    bottom: 16,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  analyzingText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#4CAF50',
+    fontWeight: '600',
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -412,6 +686,11 @@ const styles = StyleSheet.create({
   alertCount: {
     fontSize: 14,
     color: '#F44336',
+    fontWeight: '500',
+  },
+  cropCount: {
+    fontSize: 14,
+    color: '#4CAF50',
     fontWeight: '500',
   },
   healthStatusContainer: {
@@ -498,39 +777,27 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
   },
+  // Updated crop health card styles
   cropHealthCard: {
     backgroundColor: 'white',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  cropImageContainer: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: '#E8F5E8',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  cropCardIcon: {
-    fontSize: 24,
-  },
-  cropHealthInfo: {
-    flex: 1,
-  },
   cropHealthHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 16,
+  },
+  cropNameContainer: {
+    flex: 1,
+    marginRight: 12,
   },
   cropHealthName: {
     fontSize: 16,
@@ -542,6 +809,22 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
+  analyzedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#673AB7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+  },
+  analyzedText: {
+    fontSize: 8,
+    color: 'white',
+    fontWeight: '600',
+    marginLeft: 2,
+  },
   statusBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
@@ -552,48 +835,68 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: '600',
   },
-  cropHealthMetrics: {
+  // New styles for aligned metrics row
+  cropMetricsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-around',
   },
-  healthScoreSection: {
-    alignItems: 'center',
-    marginRight: 20,
-  },
-  scoreCircle: {
-    borderRadius: 25,
+  cropIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
     backgroundColor: '#E8F5E8',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  cropCardIcon: {
+    fontSize: 20,
+  },
+  cropImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  healthScoreContainer: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  scoreCircle: {
+    borderRadius: 20,
+    backgroundColor: '#E8F5E8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 2,
   },
   scoreText: {
     fontWeight: 'bold',
     color: '#4CAF50',
   },
-  healthScoreLabel: {
-    fontSize: 10,
-    color: '#666',
-  },
-  metricsColumn: {
+  metricContainer: {
+    alignItems: 'center',
     flex: 1,
-  },
-  metricItem: {
-    marginBottom: 8,
   },
   metricValue: {
     fontSize: 14,
     fontWeight: '600',
     color: '#333',
+    marginBottom: 2,
   },
   metricLabel: {
     fontSize: 10,
     color: '#666',
-    marginTop: 2,
+    textAlign: 'center',
+  },
+  issuesContainer: {
+    alignItems: 'center',
+    flex: 1,
   },
   issuesText: {
     fontSize: 12,
     color: '#4CAF50',
+    textAlign: 'center',
+    marginBottom: 2,
   },
   expandButton: {
     padding: 8,
@@ -642,6 +945,75 @@ const styles = StyleSheet.create({
   },
   treatmentPlanButtonText: {
     color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Camera options modal styles
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  cameraOptionsContainer: {
+    backgroundColor: 'white',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 40,
+  },
+  cameraOptionsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  cameraOptionsSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  cameraOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  cameraOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E8F5E8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  cameraOptionText: {
+    flex: 1,
+  },
+  cameraOptionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 2,
+  },
+  cameraOptionDescription: {
+    fontSize: 12,
+    color: '#666',
+  },
+  cancelOptionButton: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  cancelOptionText: {
+    color: '#666',
     fontSize: 16,
     fontWeight: '600',
   },

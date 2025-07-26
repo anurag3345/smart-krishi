@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // install if you haven't already
-import RentCrop from '../../components/RentCrop';
-import RentMachine from '../../components/RentMachine';
+import { SafeAreaView } from 'react-native-safe-area-context'; 
+import RentCrop from '../RentCrop';
+import RentMachine from '../RentMachine';
 
 export default function MarketScreen() {
   const [selected, setSelected] = useState('produce'); // default to produce/crop

@@ -11,63 +11,61 @@ import {
   Image,
 } from "react-native";
 import { FontAwesome5 } from "@expo/vector-icons";
-import MachineForm from "./MachineForm"; // Adjust path accordingly
-import RentMachineDetail from "./RentMachineOrder"; // Import the new detail component
+import CropForm from "../components/CropForm"; // Adjust path accordingly
+import OrderCrop from "../components/OrderCrop"; // Import new OrderCrop component
 
 const activeListing = {
-  name: "Tractor Model X1",
-  price: "₹500/hour",
-  available: "10 hours/day",
-  views: 7,
-  inquiries: 2,
+  name: "Fresh Tomatoes",
+  price: "₹45/kg",
+  available: "50kg",
+  views: 12,
+  inquiries: 3,
 };
-
-const initialRecentMachines = [
+const initialRecentProducts = [
   {
-    id: "m1",
-    category: "Tractor",
-    icon: "tractor",
-    name: "Mini Tractor",
-    desc: "Compact diesel, 18HP",
-    price: "₹350/hr",
-    available: "5h/day",
-    distance: "1.0 km",
+    id: "p1",
+    category: "Vegetables",
+    icon: "carrot",
+    name: "Organic Carrots",
+    desc: "Fresh from farm",
+    price: "₹35/kg",
+    available: "25",
+    distance: "2.5 km",
     heart: false,
   },
   {
-    id: "m2",
-    category: "Tiller",
-    icon: "seedling",
-    name: "Rotavator",
-    desc: "Power tiller, 1.2m",
-    price: "₹200/hr",
-    available: "8h/day",
-    distance: "2.7 km",
+    id: "p2",
+    category: "Vegetables",
+    icon: "leaf",
+    name: "Fresh Spinach",
+    desc: "Pesticide-free",
+    price: "₹25/kg",
+    available: "15",
+    distance: "1.2 km",
     heart: true,
   },
   {
-    id: "m3",
-    category: "Harvester",
-    icon: "truck",
-    name: "Harvester",
-    desc: "Combine harvester, Diesel",
-    price: "₹800/hr",
-    available: "4h/day",
-    distance: "3.8 km",
+    id: "p3",
+    category: "Fruits",
+    icon: "seedling",
+    name: "Sweet Corn",
+    desc: "Freshly harvested",
+    price: "₹40/kg",
+    available: "30",
+    distance: "3.1 km",
     heart: false,
   },
 ];
-
 const messages = [
   {
-    id: "msg1",
-    name: "Aashish Patel",
-    msg: "Is the tractor available on weekend?",
-    time: "4 min ago",
+    id: "m1",
+    name: "Shyam Maharjan",
+    msg: "Interested in your tomatoes. Can we discuss?",
+    time: "2 min ago",
   },
 ];
 
-const filterOptions = ["All", "Tractor", "Tiller", "Harvester", "Near Me"];
+const filterOptions = ["All", "Vegetables", "Fruits", "Grains", "Near Me"];
 
 function Chip({ label, active, onPress }) {
   return (
@@ -75,75 +73,82 @@ function Chip({ label, active, onPress }) {
       style={[styles.chip, active && styles.chipActive]}
       onPress={() => onPress(label)}
     >
-      <Text style={[styles.chipLabel, active && styles.chipActiveLabel]}>{label}</Text>
+      <Text style={[styles.chipLabel, active && styles.chipActiveLabel]}>
+        {label}
+      </Text>
     </TouchableOpacity>
   );
 }
 
-export default function RentMachine() {
-  const [machines, setMachines] = useState(initialRecentMachines);
+export default function RentCrop() {
+  const [products, setProducts] = useState(initialRecentProducts);
   const [searchText, setSearchText] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("All");
   const [modalVisible, setModalVisible] = useState(false);
 
-  // New state for selected machine detail
-  const [selectedMachine, setSelectedMachine] = useState(null);
+  // State for OrderCrop popup
+  const [orderModalVisible, setOrderModalVisible] = useState(false);
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const toggleHeart = (id) => {
-    setMachines((prev) =>
+    setProducts((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, heart: !item.heart } : item
       )
     );
   };
 
-  const filteredMachines = machines.filter((item) => {
-    const matchesSearch = item.name.toLowerCase().includes(searchText.trim().toLowerCase());
+  const filteredProducts = products.filter((item) => {
+    const matchesSearch = item.name
+      .toLowerCase()
+      .includes(searchText.trim().toLowerCase());
     if (selectedFilter === "All" || selectedFilter === "Near Me") {
       return matchesSearch;
     }
     return matchesSearch && item.category === selectedFilter;
   });
 
-  const sortedMachines = [...filteredMachines].sort((a, b) => {
+  // Sort so hearted products appear first
+  const sortedProducts = [...filteredProducts].sort((a, b) => {
     if (a.heart === b.heart) return 0;
     return a.heart ? -1 : 1;
   });
 
   const handleFormSubmit = (formData) => {
-    setMachines((prev) => [
+    setProducts((prev) => [
       {
-        id: `m${prev.length + 1}`,
+        id: `p${prev.length + 1}`,
         category: formData.category,
         icon:
           formData.imageUri && formData.imageUri.length > 0
             ? formData.imageUri
-            : formData.category === "Tractor"
-            ? "tractor"
-            : formData.category === "Tiller"
+            : formData.category === "Vegetables"
+            ? "carrot"
+            : formData.category === "Fruits"
             ? "seedling"
-            : "truck",
-        name: formData.toolName,
+            : "leaf",
+        name: formData.productName,
         desc: formData.description || "",
-        price: `₹${formData.rentalPrice}/${formData.duration}`,
-        available: `${formData.availabilityFrom} to ${formData.availabilityTo}`,
+        price: `₹${formData.pricePerUnit}/${formData.unit}`,
+        available: formData.quantity, // pass quantity as number/string without unit for checking
         distance: "0 km",
         heart: false,
       },
       ...prev,
     ]);
-    setModalVisible(false);
   };
 
-  // If a machine is selected for detail, render that and hide main list
-  if (selectedMachine) {
-    return (
-      <RentMachineDetail
-        machine={selectedMachine}
-        onClose={() => setSelectedMachine(null)}
-      />
-    );
-  }
+  // Open order modal with selected product data
+  const onOrderPress = (product) => {
+    setSelectedProduct(product);
+    setOrderModalVisible(true);
+  };
+
+  // Close order modal
+  const onOrderClose = () => {
+    setOrderModalVisible(false);
+    setSelectedProduct(null);
+  };
 
   return (
     <>
@@ -153,12 +158,17 @@ export default function RentMachine() {
         keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
       >
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 24 }}>
-          {/* Search Row */}
+          {/* Search Bar */}
           <View style={styles.searchRow}>
-            <FontAwesome5 name="search" size={16} color="#8e8e8e" style={styles.iconLeft} />
+            <FontAwesome5
+              name="search"
+              size={16}
+              color="#8e8e8e"
+              style={styles.iconLeft}
+            />
             <TextInput
               style={styles.searchInput}
-              placeholder="Search machines..."
+              placeholder="Search products..."
               placeholderTextColor="#bdbdbd"
               value={searchText}
               onChangeText={setSearchText}
@@ -166,7 +176,12 @@ export default function RentMachine() {
               autoCapitalize="none"
               clearButtonMode="while-editing"
             />
-            <FontAwesome5 name="sliders-h" size={16} color="#8e8e8e" style={styles.iconRight} />
+            <FontAwesome5
+              name="sliders-h"
+              size={16}
+              color="#8e8e8e"
+              style={styles.iconRight}
+            />
           </View>
 
           {/* Filter Chips */}
@@ -177,18 +192,28 @@ export default function RentMachine() {
             contentContainerStyle={{ paddingLeft: 12, paddingRight: 16 }}
           >
             {filterOptions.map((label) => (
-              <Chip key={label} label={label} active={selectedFilter === label} onPress={setSelectedFilter} />
+              <Chip
+                key={label}
+                label={label}
+                active={selectedFilter === label}
+                onPress={setSelectedFilter}
+              />
             ))}
           </ScrollView>
 
           {/* My Active Listings */}
           <Text style={styles.sectionTitle}>My Active Listings</Text>
           <View style={styles.listingCard}>
-            <FontAwesome5 name="tractor" size={22} color="#6c97eb" style={{ marginRight: 12 }} />
+            <FontAwesome5
+              name="pepper-hot"
+              size={22}
+              color="#ea6d3c"
+              style={{ marginRight: 12 }}
+            />
             <View style={{ flex: 1 }}>
               <Text style={styles.listingTitle}>{activeListing.name}</Text>
               <Text style={styles.listingSub}>
-                {activeListing.price} • {activeListing.available}
+                {activeListing.price} • {activeListing.available} available
               </Text>
               <View style={styles.metaRow}>
                 <Text style={styles.active}>Active</Text>
@@ -199,51 +224,74 @@ export default function RentMachine() {
             </View>
           </View>
 
-          {/* List Your Machine Button */}
-          <TouchableOpacity style={styles.listProductBtn} onPress={() => setModalVisible(true)}>
-            <Text style={styles.listProductText}>List Your Machine</Text>
-            <FontAwesome5 name="plus" size={16} color="#fff" style={{ marginLeft: 8 }} />
+          {/* List Your Product Button */}
+          <TouchableOpacity
+            style={styles.listProductBtn}
+            onPress={() => setModalVisible(true)}
+          >
+            <Text style={styles.listProductText}>List Your Product</Text>
+            <FontAwesome5
+              name="plus"
+              size={16}
+              color="#fff"
+              style={{ marginLeft: 8 }}
+            />
           </TouchableOpacity>
 
-          {/* Recent Machines */}
+          {/* Recent Products */}
           <View style={styles.rowBetween}>
-            <Text style={styles.sectionTitle}>Recent Machines</Text>
+            <Text style={styles.sectionTitle}>Recent Products</Text>
             <TouchableOpacity>
               <Text style={styles.viewAll}>View All</Text>
             </TouchableOpacity>
           </View>
 
-          {sortedMachines.length > 0 ? (
-            sortedMachines.map((item) => (
+          {sortedProducts.length > 0 ? (
+            sortedProducts.map((item) => (
               <View style={styles.productCard} key={item.id}>
                 {item.icon && (item.icon.startsWith("http") || item.icon.startsWith("file://")) ? (
-                  <Image source={{ uri: item.icon }} style={{ width: 28, height: 28, borderRadius: 5, marginRight: 12 }} />
+                  <Image
+                    source={{ uri: item.icon }}
+                    style={{ width: 28, height: 28, borderRadius: 5, marginRight: 12 }}
+                  />
                 ) : (
-                  <FontAwesome5 name={item.icon || "seedling"} size={22} color="#a5d7a7" style={{ marginRight: 12 }} />
+                  <FontAwesome5
+                    name={item.icon || "seedling"}
+                    size={22}
+                    color="#a5d7a7"
+                    style={{ marginRight: 12 }}
+                  />
                 )}
                 <View style={{ flex: 1 }}>
                   <Text style={styles.productTitle}>{item.name}</Text>
                   <Text style={styles.productSub}>{item.desc}</Text>
                   <Text style={styles.productMeta}>
-                    {item.price} {item.available}
+                    {item.price} {item.available} available
                   </Text>
                   <Text style={styles.distance}>{item.distance} away</Text>
                 </View>
-                <TouchableOpacity onPress={() => toggleHeart(item.id)} style={{ paddingHorizontal: 8 }}>
-                  <FontAwesome5 name="heart" size={18} color={item.heart ? "#e74c3c" : "#bbb"} solid={item.heart} />
+                <TouchableOpacity
+                  onPress={() => toggleHeart(item.id)}
+                  style={{ paddingHorizontal: 8 }}
+                >
+                  <FontAwesome5
+                    name="heart"
+                    size={18}
+                    color={item.heart ? "#e74c3c" : "#bbb"}
+                    solid={item.heart}
+                  />
                 </TouchableOpacity>
-                {/* Updated Rent Now: On press open detail */}
                 <TouchableOpacity
                   style={styles.contactBtn}
-                  onPress={() => setSelectedMachine(item)}
+                  onPress={() => onOrderPress(item)}
                 >
-                  <Text style={{ color: "#fff", fontSize: 13 }}>Rent Now</Text>
+                  <Text style={{ color: "#fff", fontSize: 13 }}>Order Now</Text>
                 </TouchableOpacity>
               </View>
             ))
           ) : (
             <Text style={{ textAlign: "center", marginVertical: 16, color: "#999" }}>
-              No machines found
+              No products found
             </Text>
           )}
 
@@ -251,7 +299,12 @@ export default function RentMachine() {
           <Text style={styles.sectionTitle}>Recent Messages</Text>
           {messages.map((msg) => (
             <View key={msg.id} style={styles.msgRow}>
-              <FontAwesome5 name="user-circle" size={24} color="#bdbdbd" style={{ marginRight: 10 }} />
+              <FontAwesome5
+                name="user-circle"
+                size={24}
+                color="#bdbdbd"
+                style={{ marginRight: 10 }}
+              />
               <View style={{ flex: 1 }}>
                 <Text style={styles.msgName}>{msg.name}</Text>
                 <Text style={styles.msgTxt}>{msg.msg}</Text>
@@ -262,14 +315,25 @@ export default function RentMachine() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Machine Form Modal */}
-      <MachineForm visible={modalVisible} onClose={() => setModalVisible(false)} onSubmit={handleFormSubmit} />
+      {/* Crop Form Modal */}
+      <CropForm
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onSubmit={handleFormSubmit}
+      />
+
+      {/* Order Crop Modal */}
+      <OrderCrop
+        visible={orderModalVisible}
+        onClose={onOrderClose}
+        product={selectedProduct}
+      />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f7f7f7", paddingTop: 0 },
+  container: { flex: 1, backgroundColor: "#f7f7f7", paddingTop: 20},
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
