@@ -1,51 +1,69 @@
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useDispatch, useSelector } from 'react-redux';  // Import hooks for dispatch and state access
-import { setLanguage } from '../store/languageSlice';  // Import the setLanguage action
+import { useDispatch, useSelector } from 'react-redux';
+import { useRouter } from 'expo-router';
+import { setLanguage } from '../store/languageSlice';
 import { toNepaliDigits } from '../constants/numberTranslator';
 
 export default function HomeHeader() {
-  const dispatch = useDispatch(); // Initialize dispatch
-  const language = useSelector((state) => state.language.value); // Access current language from Redux state
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const language = useSelector((state) => state.language.value);
   const notificationCount = 3;
 
-  // Function to toggle language
   const handleLanguageToggle = () => {
-    dispatch(setLanguage(language === 'EN' ? 'NP' : 'EN')); // Dispatch setLanguage to update the language
+    dispatch(setLanguage(language === 'EN' ? 'NP' : 'EN'));
+  };
+
+  const handleNotificationPress = () => {
+    router.push('/(tabs)/alerts');
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.leftSection}>
-        <Image
-  source={require('../assets/images/logo.png')} 
-  style={[{ width: 24, height: 24}, styles.iconSpacing]}
-/>
+      <View style={styles.header}>
+        <View style={styles.leftSection}>
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('../assets/images/logo.png')} 
+              style={styles.logo}
+            />
+          </View>
+          <View style={styles.titleContainer}>
+            <Text style={styles.title}>
+              {language === 'EN' ? 'Smart Krishi' : 'स्मार्ट कृषि'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {language === 'EN' ? 'Smart Farming Solutions' : 'स्मार्ट कृषि समाधान'}
+            </Text>
+          </View>
+        </View>
 
-        {/* <Ionicons name="leaf" size={24} color="white" /> */}
-        <Text style={styles.title}>
-          {language === 'EN' ? 'Smart Krishi' : 'स्मार्ट कृषि'}
-        </Text>
-      </View>
+        <View style={styles.rightSection}>
+          <TouchableOpacity 
+            onPress={handleLanguageToggle}
+            style={styles.languageButton}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="language" size={16} color="#4CAF50" />
+            <Text style={styles.languageText}>{language}</Text>
+          </TouchableOpacity>
 
-      <View style={styles.rightSection}>
-        <TouchableOpacity 
-          onPress={handleLanguageToggle} // Use the function to toggle language
-          style={styles.languageButton}
-        >
-          <Text style={styles.languageText}>{language}</Text>
-        </TouchableOpacity>
-
-        <View style={styles.notificationWrapper}>
-          <Ionicons name="notifications" size={24} color="white" />
-          {notificationCount > 0 && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>
-                {toNepaliDigits(notificationCount, language)} {/* Pass language here */}
-              </Text>
-            </View>
-          )}
+          <TouchableOpacity 
+            style={styles.notificationButton} 
+            activeOpacity={0.8}
+            onPress={handleNotificationPress}
+          >
+            <Ionicons name="notifications-outline" size={20} color="#FFFFFF" />
+            {notificationCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>
+                  {toNepaliDigits(notificationCount, language)}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -54,69 +72,118 @@ export default function HomeHeader() {
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: '#4CAF50',
+    paddingTop: 50, // Account for status bar
+    paddingBottom: 20,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    marginTop: 25,
-    backgroundColor: '#4daf51',
-    borderRadius: 10,
   },
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
-  rightSection: {
-    flexDirection: 'row',
+  logoContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
-  },
-  iconSpacing: {
-    marginRight: 8,
-    borderRadius:10,
-  },
-  languageButton: {
-    backgroundColor: '#ffffff',
-    borderColor: '#4daf51',
-    borderWidth: 1.2,
-    paddingVertical: 5,
-    paddingHorizontal: 14,
-    borderRadius: 20,
     marginRight: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 4,
+    elevation: 3,
   },
-  languageText: {
-    color: '#4daf51',
-    fontWeight: 'bold',
-    fontSize: 14,
-    letterSpacing: 1,
+  logo: {
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+  },
+  titleContainer: {
+    flex: 1,
   },
   title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: 'white',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
-  notificationWrapper: {
+  subtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '500',
+  },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  languageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  languageText: {
+    color: '#4CAF50',
+    fontWeight: '600',
+    fontSize: 13,
+    marginLeft: 4,
+  },
+  notificationButton: {
     position: 'relative',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   badge: {
     position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: 'red',
-    borderRadius: 12,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    top: -2,
+    right: -2,
+    backgroundColor: '#F44336',
+    borderRadius: 10,
     minWidth: 20,
-    alignItems: 'center',
+    height: 20,
     justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   badgeText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '600',
   },
 });

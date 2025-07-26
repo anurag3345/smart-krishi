@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
-import { Image, StyleSheet, Text, View, ActivityIndicator } from 'react-native';
+import { Image, StyleSheet, Text, View, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { Ionicons } from "@expo/vector-icons";
 import { getWeather, getWeatherForecast } from '../services/weatherService';
 import { translateWeather } from '../constants/weatherTranslations';
 import { toNepaliDigits } from '../constants/numberTranslator';
@@ -17,8 +18,6 @@ const getTimeLabel = (dtStr, language) => {
   else label = `${hour - 12} PM`;
 
   if (language === 'NP' && label !== 'Now') {
-    // Convert only hour part to Nepali digits, keep AM/PM as is
-    // e.g. "12 PM" => "१२ PM"
     const [hourPart, meridiem] = label.split(' ');
     const nepaliHour = toNepaliDigits(hourPart, language);
     return `${nepaliHour} ${meridiem}`;
@@ -65,59 +64,98 @@ export default function WeatherCard() {
   }, [latitude, longitude]);
 
   if (latitude === null || longitude === null) {
-    return <Text style={styles.loading}>📍 Getting location...</Text>;
+    return (
+      <View style={styles.loadingCard}>
+        <Ionicons name="location-outline" size={24} color="#666" />
+        <Text style={styles.loadingText}>Getting location...</Text>
+      </View>
+    );
   }
 
-  if (error) return <Text style={styles.error}>{error}</Text>;
+  if (error) {
+    return (
+      <View style={styles.errorCard}>
+        <Ionicons name="alert-circle-outline" size={24} color="#F44336" />
+        <Text style={styles.errorText}>Failed to load weather data</Text>
+      </View>
+    );
+  }
 
   if (!weather || forecast.length === 0) {
-    return <ActivityIndicator size="large" color="#007AFF" />;
+    return (
+      <View style={styles.loadingCard}>
+        <ActivityIndicator size="large" color="#2196F3" />
+        <Text style={styles.loadingText}>Loading weather...</Text>
+      </View>
+    );
   }
 
   const weatherIconUrl = `https://openweathermap.org/img/wn/${weather.icon}@2x.png`;
 
   return (
     <View style={styles.card}>
-      <View style={styles.headerRow}>
-        <Text style={styles.title}>
-          {language === 'EN' ? 'Weather Forecast' : 'मौसम पूर्वानुमान'}
-        </Text>
-        <Text style={styles.viewMore}>
-          {language === 'EN' ? 'View More' : 'थप हेर्नुहोस्'}
-        </Text>
+      {/* Header Section */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <View style={styles.iconContainer}>
+            <Ionicons name="partly-sunny" size={20} color="#FFFFFF" />
+          </View>
+          <View style={styles.headerText}>
+            <Text style={styles.title}>
+              {language === 'EN' ? 'Weather Forecast' : 'मौसम पूर्वानुमान'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {language === 'EN' ? 'Today, Kathmandu' : 'आज, काठमाडौं'}
+            </Text>
+          </View>
+        </View>
+        
+        <TouchableOpacity style={styles.viewMoreButton}>
+          <Text style={styles.viewMoreText}>
+            {language === 'EN' ? 'View More' : 'थप हेर्नुहोस्'}
+          </Text>
+          <Ionicons name="chevron-forward" size={14} color="#2196F3" />
+        </TouchableOpacity>
       </View>
 
-      <Text style={styles.subtitle}>
-        {language === 'EN' ? 'Today, Kathmandu' : 'आज, काठमाडौं'}
-      </Text>
-
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.temp}>
-            {toNepaliDigits(weather.temperature, language)}°C
+      {/* Current Weather Section */}
+      <View style={styles.currentWeather}>
+        <View style={styles.tempSection}>
+          <Text style={styles.temperature}>
+            {toNepaliDigits(weather.temperature, language)}°
           </Text>
           <Text style={styles.condition}>
             {translateWeather(weather.condition, language)}
           </Text>
         </View>
-        <Image source={{ uri: weatherIconUrl }} style={styles.icon} />
+        <View style={styles.weatherIconContainer}>
+          <Image source={{ uri: weatherIconUrl }} style={styles.weatherIcon} />
+        </View>
       </View>
 
-      <View style={styles.forecastContainer}>
-        {forecast.map((item, index) => (
-          <View key={index} style={styles.forecastItem}>
-            <Text style={styles.time}>{getTimeLabel(item.dt_txt, language)}</Text>
-            <Image
-              source={{
-                uri: `https://openweathermap.org/img/wn/${item.weather[0].icon}@2x.png`,
-              }}
-              style={styles.forecastIcon}
-            />
-            <Text style={styles.forecastTemp}>
-              {toNepaliDigits(Math.round(item.main.temp), language)}°C
-            </Text>
-          </View>
-        ))}
+      {/* Forecast Section */}
+      <View style={styles.forecastSection}>
+        <Text style={styles.forecastTitle}>
+          {language === 'EN' ? 'Today\'s Forecast' : 'आजको पूर्वानुमान'}
+        </Text>
+        <View style={styles.forecastContainer}>
+          {forecast.map((item, index) => (
+            <View key={index} style={styles.forecastItem}>
+              <Text style={styles.forecastTime}>
+                {getTimeLabel(item.dt_txt, language)}
+              </Text>
+              <Image
+                source={{
+                  uri: `https://openweathermap.org/img/wn/${item.weather[0].icon}@2x.png`,
+                }}
+                style={styles.forecastIcon}
+              />
+              <Text style={styles.forecastTemp}>
+                {toNepaliDigits(Math.round(item.main.temp), language)}°
+              </Text>
+            </View>
+          ))}
+        </View>
       </View>
     </View>
   );
@@ -125,50 +163,103 @@ export default function WeatherCard() {
 
 const styles = StyleSheet.create({
   card: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: '#ffffff',
+    marginHorizontal: 20,
+    marginVertical: 8,
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
+    padding: 20,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
     shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
     elevation: 3,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  viewMore: {
-    fontSize: 14,
-    color: '#007AFF',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 12,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  temp: {
-    fontSize: 40,
-    fontWeight: 'bold',
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
-  condition: {
-    fontSize: 14,
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#2196F3',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  headerText: {
+    flex: 1,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 13,
     color: '#666',
   },
-  icon: {
-    width: 70,
-    height: 70,
+  viewMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F8FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  viewMoreText: {
+    fontSize: 13,
+    color: '#2196F3',
+    fontWeight: '500',
+    marginRight: 4,
+  },
+  currentWeather: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+    paddingVertical: 16,
+    backgroundColor: '#F8FAFE',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+  },
+  tempSection: {
+    flex: 1,
+  },
+  temperature: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  condition: {
+    fontSize: 15,
+    color: '#666',
+    fontWeight: '500',
+  },
+  weatherIconContainer: {
+    alignItems: 'center',
+  },
+  weatherIcon: {
+    width: 80,
+    height: 80,
+  },
+  forecastSection: {
+    marginTop: 8,
+  },
+  forecastTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 16,
   },
   forecastContainer: {
     flexDirection: 'row',
@@ -177,30 +268,66 @@ const styles = StyleSheet.create({
   forecastItem: {
     alignItems: 'center',
     flex: 1,
+    backgroundColor: '#FAFBFC',
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    marginHorizontal: 2,
   },
-  time: {
+  forecastTime: {
     fontSize: 12,
-    color: '#555',
-    marginBottom: 4,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 8,
   },
   forecastIcon: {
-    width: 40,
-    height: 40,
-    marginBottom: 4,
+    width: 36,
+    height: 36,
+    marginBottom: 8,
   },
   forecastTemp: {
     fontSize: 14,
     fontWeight: '600',
+    color: '#1a1a1a',
   },
-  loading: {
-    textAlign: 'center',
-    padding: 20,
-    fontSize: 16,
+  loadingCard: {
+    marginHorizontal: 20,
+    marginVertical: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  error: {
-    color: 'red',
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#666',
     textAlign: 'center',
-    padding: 20,
-    fontSize: 16,
+  },
+  errorCard: {
+    marginHorizontal: 20,
+    marginVertical: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  errorText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#F44336',
+    textAlign: 'center',
   },
 });
