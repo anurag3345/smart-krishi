@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
-  Image,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -10,110 +9,21 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-
-// We'll use the icon from the crop data instead of static images
-const getDefaultIcon = (cropName) => {
-  const defaultIcons = {
-    wheat: '🌾',
-    maize: '🌽',
-    corn: '🌽',
-    potato: '🥔',
-    onion: '🧅',
-    rice: '🍚',
-    tomato: '🍅',
-    carrot: '🥕',
-    cabbage: '🥬',
-  };
-  return defaultIcons[cropName?.toLowerCase()] || '🌱';
-};
-
-const CROP_STAGES = {
-  wheat: 'Tillering',
-  maize: 'V6 stage',
-  potato: 'Tuber initiation',
-  onion: 'Bulbing',
-  rice: 'Panicle initiation',
-  tomato: 'Flowering',
-  carrot: 'Root development',
-  cabbage: 'Head formation',
-};
-
-const CROP_TIPS = {
-  wheat: [
-    'Irrigate every 7-10 days during growing season.',
-    'Control weeds in early stages for better yield.',
-    'Apply nitrogen fertilizer at tillering stage.',
-    'Monitor for rust and aphids regularly.',
-  ],
-  maize: [
-    'Monitor for leaf blight and corn borer.',
-    'Apply fertilizer at V6 stage for optimal growth.',
-    'Irrigate twice a week during dry periods.',
-    'Ensure adequate spacing between plants.',
-  ],
-  potato: [
-    'Hill the plants regularly for better tuber yield.',
-    'Avoid waterlogging to prevent root rot.',
-    'Check for late blight and Colorado beetle regularly.',
-    'Harvest when leaves start yellowing.',
-  ],
-  onion: [
-    'Keep fields weed-free throughout growing season.',
-    'Avoid overwatering to prevent bulb rot.',
-    'Apply light irrigation during bulb development.',
-    'Stop watering 2-3 weeks before harvest.',
-  ],
-  rice: [
-    'Maintain 2-3cm standing water in fields.',
-    'Watch for blast and brown spot diseases.',
-    'Apply fertilizer at panicle initiation stage.',
-    'Drain fields before harvest for easier cutting.',
-  ],
-  tomato: [
-    'Provide support stakes for climbing varieties.',
-    'Water consistently to prevent blossom end rot.',
-    'Prune suckers for better fruit development.',
-    'Monitor for hornworms and aphids.',
-  ],
-  carrot: [
-    'Ensure loose, well-draining soil for straight roots.',
-    'Thin seedlings to prevent overcrowding.',
-    'Keep soil consistently moist but not waterlogged.',
-    'Harvest when shoulders are 3/4 inch diameter.',
-  ],
-  cabbage: [
-    'Provide consistent moisture for head formation.',
-    'Apply mulch to retain soil moisture.',
-    'Monitor for cabbage worms and aphids.',
-    'Harvest when heads feel firm and solid.',
-  ],
-};
-
-const CROP_WEATHER = {
-  wheat: 'Cool, dry climate (15-25°C)',
-  maize: 'Warm, moist climate (16-27°C)',
-  potato: 'Cool, frost-free (15-21°C)',
-  onion: 'Mild, dry climate (12-24°C)',
-  rice: 'Warm, humid (20-35°C)',
-  tomato: 'Warm, sunny climate (18-27°C)',
-  carrot: 'Cool, temperate (16-21°C)',
-  cabbage: 'Cool, moist climate (15-20°C)',
-};
-
-const GROWTH_DURATION = {
-  wheat: '120-150 days',
-  maize: '90-120 days',
-  potato: '70-120 days',
-  onion: '90-120 days',
-  rice: '120-150 days',
-  tomato: '80-100 days',
-  carrot: '70-80 days',
-  cabbage: '80-100 days',
-};
+import {
+  getDefaultIcon,
+  CROP_LIFECYCLE,
+  CROP_CARE_STEPS,
+  CROP_WEATHER,
+  GROWTH_DURATION,
+  CROP_TIPS,
+} from '../constants/crop-data'; // Import from data.js file
 
 const CropDetailsScreen = () => {
   const router = useRouter();
   const params = useLocalSearchParams();
+  
+  // State for tracking completed care tasks
+  const [completedTasks, setCompletedTasks] = useState([]);
 
   let crop = null;
   try {
@@ -137,59 +47,34 @@ const CropDetailsScreen = () => {
   }
 
   const lowerCrop = crop.name ? crop.name.toLowerCase() : '';
+  const lifecycle = CROP_LIFECYCLE[lowerCrop] || [];
+  const careSteps = CROP_CARE_STEPS[lowerCrop] || [];
 
-// const calculateDaysPlanted = (plantedDate) => {
-//   if (!plantedDate) return 'Not specified';
-  
-//   try {
-//     // Parse the planted date - handle the format from my-crops.js: "July 26, 2025"
-//     const plantedDateObj = new Date(plantedDate);
-    
-//     // Check if date parsing was successful
-//     if (isNaN(plantedDateObj.getTime())) {
-//       return 'Invalid date';
-//     }
-    
-//     // Get today's date
-//     const today = new Date();
-    
-//     // Calculate difference in milliseconds
-//     const timeDifference = today.getTime() - plantedDateObj.getTime();
-    
-//     // Convert to days (1 day = 24 * 60 * 60 * 1000 milliseconds)
-//     const daysDifference = Math.floor(timeDifference / (1000 * 60 * 60 * 24));
-    
-//     // Return appropriate message based on the difference
-//     if (daysDifference === 0) {
-//       return 'Today';
-//     } else if (daysDifference === 1) {
-//       return '1 day ago';
-//     } else if (daysDifference > 1) {
-//       return `${daysDifference} days ago`;
-//     } else if (daysDifference === -1) {
-//       return 'Tomorrow';
-//     } else {
-//       // Future date
-//       return `In ${Math.abs(daysDifference)} days`;
-//     }
-    
-//   } catch (error) {
-//     console.error('Error calculating days:', error);
-//     return 'Unable to calculate';
-//   }
-// };
+  // Get current stage index based on crop status
+  const getCurrentStageIndex = () => {
+    if (!crop.status) return 0;
+    return lifecycle.findIndex(stage => 
+      stage.stage.toLowerCase().includes(crop.status.toLowerCase())
+    ) || 0;
+  };
+
+  const currentStageIndex = getCurrentStageIndex();
 
   const getStatusInfo = (crop) => {
-    // Use the status and statusColor from the crop data
     return {
       text: crop.status || 'Growing',
       color: crop.statusColor || '#4CAF50',
     };
   };
 
-  // Get the current stage based on the crop's status
-  const getCurrentStage = () => {
-    return crop.status || CROP_STAGES[lowerCrop] || 'Growing';
+  const toggleTaskCompletion = (taskId) => {
+    setCompletedTasks(prev => {
+      if (prev.includes(taskId)) {
+        return prev.filter(id => id !== taskId);
+      } else {
+        return [...prev, taskId];
+      }
+    });
   };
 
   const handleEditCrop = () => {
@@ -200,18 +85,13 @@ const CropDetailsScreen = () => {
     );
   };
 
-  const handleDeleteCrop = () => {
-    Alert.alert(
-      'Delete Crop',
-      'Are you sure you want to delete this crop?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => router.back() },
-      ]
-    );
-  };
-
   const statusInfo = getStatusInfo(crop);
+
+  // Get current stage care tasks
+  const currentStageTasks = careSteps.filter(task => 
+    lifecycle[currentStageIndex] && 
+    task.stage === lifecycle[currentStageIndex].stage
+  );
 
   return (
     <View style={styles.container}>
@@ -256,7 +136,7 @@ const CropDetailsScreen = () => {
           <View style={styles.infoGrid}>
             <View style={styles.infoRow}>
               <Text style={styles.label}>Current Stage:</Text>
-              <Text style={styles.value}>{getCurrentStage()}</Text>
+              <Text style={styles.value}>{lifecycle[currentStageIndex]?.stage || 'Growing'}</Text>
             </View>
             
             {crop.currentWeek && (
@@ -270,11 +150,6 @@ const CropDetailsScreen = () => {
               <Text style={styles.label}>Planted Date:</Text>
               <Text style={styles.value}>{crop.planted || 'Not specified'}</Text>
             </View>
-            
-            {/* <View style={styles.infoRow}>
-              <Text style={styles.label}>Days Since Planting:</Text>
-              <Text style={styles.value}>{calculateDaysPlanted(crop.planted)}</Text>
-            </View> */}
             
             <View style={styles.infoRow}>
               <Text style={styles.label}>Expected Harvest:</Text>
@@ -302,6 +177,152 @@ const CropDetailsScreen = () => {
           </View>
         </View>
 
+        {/* Lifecycle Progress Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Growth Lifecycle</Text>
+          <View style={styles.lifecycleContainer}>
+            {lifecycle.map((stage, index) => (
+              <View key={index} style={styles.lifecycleStage}>
+                <View style={styles.stageLeft}>
+                  <View style={[
+                    styles.stageIndicator,
+                    {
+                      backgroundColor: index <= currentStageIndex ? '#4CAF50' : '#e0e0e0',
+                    }
+                  ]}>
+                    {index < currentStageIndex ? (
+                      <Ionicons name="checkmark" size={16} color="white" />
+                    ) : index === currentStageIndex ? (
+                      <View style={styles.currentStageIndicator} />
+                    ) : (
+                      <Text style={styles.stageNumber}>{index + 1}</Text>
+                    )}
+                  </View>
+                  {index < lifecycle.length - 1 && (
+                    <View style={[
+                      styles.stageLine,
+                      { backgroundColor: index < currentStageIndex ? '#4CAF50' : '#e0e0e0' }
+                    ]} />
+                  )}
+                </View>
+                <View style={[
+                  styles.stageContent,
+                  { opacity: index <= currentStageIndex ? 1 : 0.6 }
+                ]}>
+                  <Text style={[
+                    styles.stageTitle,
+                    { color: index === currentStageIndex ? '#4CAF50' : '#333' }
+                  ]}>
+                    {stage.stage}
+                  </Text>
+                  <Text style={styles.stageDuration}>{stage.duration}</Text>
+                  <Text style={styles.stageDescription}>{stage.description}</Text>
+                  {index === currentStageIndex && (
+                    <View style={styles.currentStageTag}>
+                      <Text style={styles.currentStageText}>Current Stage</Text>
+                    </View>
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {/* Care & Reminders Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Care & Reminders</Text>
+          <Text style={styles.sectionSubtitle}>
+            Tasks for current stage: {lifecycle[currentStageIndex]?.stage}
+          </Text>
+          
+          <View style={styles.careTasksContainer}>
+            {currentStageTasks.length > 0 ? (
+              currentStageTasks.map((task) => (
+                <TouchableOpacity
+                  key={task.id}
+                  style={[
+                    styles.careTaskItem,
+                    completedTasks.includes(task.id) && styles.completedTask
+                  ]}
+                  onPress={() => toggleTaskCompletion(task.id)}
+                >
+                  <View style={styles.taskLeft}>
+                    <View style={[
+                      styles.taskCheckbox,
+                      {
+                        backgroundColor: completedTasks.includes(task.id) ? '#4CAF50' : 'transparent',
+                        borderColor: completedTasks.includes(task.id) ? '#4CAF50' : '#ddd',
+                      }
+                    ]}>
+                      {completedTasks.includes(task.id) && (
+                        <Ionicons name="checkmark" size={16} color="white" />
+                      )}
+                    </View>
+                    <View style={styles.taskContent}>
+                      <Text style={[
+                        styles.taskText,
+                        completedTasks.includes(task.id) && styles.completedTaskText
+                      ]}>
+                        {task.task}
+                      </Text>
+                      <View style={styles.taskMeta}>
+                        <View style={[
+                          styles.priorityBadge,
+                          {
+                            backgroundColor: task.priority === 'high' ? '#FF5722' :
+                              task.priority === 'medium' ? '#FF9800' : '#4CAF50'
+                          }
+                        ]}>
+                          <Text style={styles.priorityText}>
+                            {task.priority.toUpperCase()}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.noTasksContainer}>
+                <Ionicons name="checkmark-circle" size={48} color="#4CAF50" />
+                <Text style={styles.noTasksText}>
+                  No specific tasks for this stage
+                </Text>
+                <Text style={styles.noTasksSubtext}>
+                  Continue with general care practices
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* General Quick Reminders */}
+          {(crop.waterDays || crop.fertilizeDays || crop.waterToday) && (
+            <View style={styles.quickReminders}>
+              <Text style={styles.quickRemindersTitle}>Quick Reminders</Text>
+              {crop.waterToday && (
+                <View style={styles.reminderCard}>
+                  <Ionicons name="warning" size={20} color="#FF5722" />
+                  <Text style={[styles.reminderText, { color: '#FF5722' }]}>
+                    Needs water today
+                  </Text>
+                </View>
+              )}
+              {crop.waterDays && (
+                <View style={styles.reminderCard}>
+                  <Ionicons name="water" size={20} color="#2196F3" />
+                  <Text style={styles.reminderText}>Water in {crop.waterDays} days</Text>
+                </View>
+              )}
+              {crop.fertilizeDays && (
+                <View style={styles.reminderCard}>
+                  <Ionicons name="leaf" size={20} color="#4CAF50" />
+                  <Text style={styles.reminderText}>Fertilize in {crop.fertilizeDays} days</Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
+
         {/* Environmental Conditions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Environmental Conditions</Text>
@@ -310,7 +331,6 @@ const CropDetailsScreen = () => {
             <Text style={styles.weatherText}>{CROP_WEATHER[lowerCrop] || 'Moderate climate'}</Text>
           </View>
           
-          {/* Show current temperature and range if available */}
           {crop.currentTemp && crop.tempRange && (
             <View style={styles.temperatureCard}>
               <View style={styles.tempRow}>
@@ -347,35 +367,6 @@ const CropDetailsScreen = () => {
               ]}>
                 {crop.progress}% Complete
               </Text>
-            </View>
-          </View>
-        )}
-
-        {/* Care & Reminders Section */}
-        {(crop.waterDays || crop.fertilizeDays || crop.waterToday) && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Care & Reminders</Text>
-            <View style={styles.remindersContainer}>
-              {crop.waterToday && (
-                <View style={styles.reminderCard}>
-                  <Ionicons name="warning" size={20} color="#FF5722" />
-                  <Text style={[styles.reminderText, { color: '#FF5722' }]}>
-                    Needs water today
-                  </Text>
-                </View>
-              )}
-              {crop.waterDays && (
-                <View style={styles.reminderCard}>
-                  <Ionicons name="water" size={20} color="#2196F3" />
-                  <Text style={styles.reminderText}>Water in {crop.waterDays} days</Text>
-                </View>
-              )}
-              {crop.fertilizeDays && (
-                <View style={styles.reminderCard}>
-                  <Ionicons name="leaf" size={20} color="#4CAF50" />
-                  <Text style={styles.reminderText}>Fertilize in {crop.fertilizeDays} days</Text>
-                </View>
-              )}
             </View>
           </View>
         )}
@@ -421,22 +412,6 @@ const CropDetailsScreen = () => {
             ))}
           </View>
         </View>
-
-        {/* Action Buttons */}
-        {/* <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.actionButton} onPress={handleEditCrop}>
-            <Ionicons name="create-outline" size={20} color="#4CAF50" />
-            <Text style={styles.actionButtonText}>Edit Crop</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.deleteButton]} 
-            onPress={handleDeleteCrop}
-          >
-            <Ionicons name="trash-outline" size={20} color="#F44336" />
-            <Text style={[styles.actionButtonText, styles.deleteButtonText]}>Delete</Text>
-          </TouchableOpacity>
-        </View> */}
       </ScrollView>
     </View>
   );
@@ -522,12 +497,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  cropImage: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    backgroundColor: '#f5f5f5',
-  },
   cropIconContainer: {
     width: 80,
     height: 80,
@@ -556,19 +525,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#757575',
     marginBottom: 8,
-  },
-  healthContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  healthLabel: {
-    fontSize: 16,
-    color: '#424242',
-    fontWeight: '500',
-  },
-  healthValue: {
-    fontSize: 16,
-    fontWeight: 'bold',
   },
   statusContainer: {
     flexDirection: 'row',
@@ -616,6 +572,12 @@ const styles = StyleSheet.create({
     color: '#2e7d32',
     marginBottom: 12,
   },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 16,
+    fontStyle: 'italic',
+  },
   infoGrid: {
     gap: 8,
   },
@@ -640,6 +602,178 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
   },
+  // Lifecycle Styles
+  lifecycleContainer: {
+    paddingVertical: 8,
+  },
+  lifecycleStage: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  stageLeft: {
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  stageIndicator: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  currentStageIndicator: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'white',
+  },
+  stageNumber: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  stageLine: {
+    width: 2,
+    height: 40,
+    marginTop: 4,
+  },
+  stageContent: {
+    flex: 1,
+    paddingBottom: 16,
+  },
+  stageTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  stageDuration: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 4,
+  },
+  stageDescription: {
+    fontSize: 14,
+    color: '#757575',
+    lineHeight: 20,
+  },
+  currentStageTag: {
+    backgroundColor: '#e8f5e8',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 8,
+  },
+  currentStageText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: 'bold',
+  },
+  // Care Tasks Styles
+  careTasksContainer: {
+    gap: 12,
+  },
+  careTaskItem: {
+    backgroundColor: '#f8f9fa',
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+  },
+  completedTask: {
+    backgroundColor: '#f1f8e9',
+    borderLeftColor: '#81C784',
+    opacity: 0.8,
+  },
+  taskLeft: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  taskCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+    marginTop: 2,
+  },
+  taskContent: {
+    flex: 1,
+  },
+  taskText: {
+    fontSize: 16,
+    color: '#333',
+    fontWeight: '500',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  completedTaskText: {
+    textDecorationLine: 'line-through',
+    color: '#666',
+  },
+  taskMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  priorityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  priorityText: {
+    fontSize: 10,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+  noTasksContainer: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  noTasksText: {
+    fontSize: 16,
+    color: '#4CAF50',
+    fontWeight: '600',
+    marginTop: 12,
+  },
+  noTasksSubtext: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  // Quick Reminders
+  quickReminders: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  quickRemindersTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2e7d32',
+    marginBottom: 12,
+  },
+  reminderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8f9fa',
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+    marginBottom: 8,
+  },
+  reminderText: {
+    fontSize: 14,
+    color: '#424242',
+    marginLeft: 12,
+    fontWeight: '500',
+  },
+  // Other existing styles
   weatherCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -704,24 +838,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginTop: 8,
   },
-  remindersContainer: {
-    gap: 12,
-  },
-  reminderCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
-  },
-  reminderText: {
-    fontSize: 14,
-    color: '#424242',
-    marginLeft: 12,
-    fontWeight: '500',
-  },
   customTipsContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -775,18 +891,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  notesContainer: {
-    backgroundColor: '#f8f9fa',
-    padding: 12,
-    borderRadius: 8,
-    borderLeftWidth: 4,
-    borderLeftColor: '#2196F3',
-  },
-  notesText: {
-    fontSize: 16,
-    color: '#424242',
-    lineHeight: 24,
-  },
   tipsContainer: {
     gap: 12,
   },
@@ -803,41 +907,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     flex: 1,
     lineHeight: 20,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#fff',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#4CAF50',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  actionButtonText: {
-    fontSize: 16,
-    color: '#4CAF50',
-    fontWeight: '500',
-    marginLeft: 8,
-  },
-  deleteButton: {
-    borderColor: '#F44336',
-  },
-  deleteButtonText: {
-    color: '#F44336',
   },
 });
 
