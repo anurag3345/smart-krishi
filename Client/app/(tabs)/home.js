@@ -5,7 +5,7 @@ import HomeHeader from '../../components/HomeHeader';
 import OfflineAlert from '../../components/OfflineAlert';
 import TipCard from '../../components/TipCard';
 import WeatherCard from '../../components/WeatherCard';
-import FAQSection from '../../components/FAQSection'; // New import
+import FAQSection from '../../components/Question';
 import {
   farmingTips,
   featureGridItems,
