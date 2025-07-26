@@ -1,31 +1,39 @@
+import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';  // Import hooks for dispatch and state access
+import { setLanguage } from '../store/languageSlice';  // Import the setLanguage action
+import { toNepaliDigits } from '../constants/numberTranslator';
 
 export default function HomeHeader() {
-  const [language, setLanguage] = useState('EN');
+  const dispatch = useDispatch(); // Initialize dispatch
+  const language = useSelector((state) => state.language.value); // Access current language from Redux state
   const notificationCount = 3;
 
-  const toggleLanguage = () => {
-    setLanguage((prev) => (prev === 'EN' ? 'NP' : 'EN'));
+  // Function to toggle language
+  const handleLanguageToggle = () => {
+    dispatch(setLanguage(language === 'EN' ? 'NP' : 'EN')); // Dispatch setLanguage to update the language
   };
 
   return (
     <View style={styles.container}>
-      {/* Left: Leaf icon + Title */}
       <View style={styles.leftSection}>
         <Image
   source={require('../assets/images/logo.png')} 
   style={[{ width: 24, height: 24}, styles.iconSpacing]}
 />
 
-        {/* <Ionicons name="leaf" size={24} color="white" style={styles.iconSpacing} /> */}
-        <Text style={styles.title}>Smart Krishi</Text>
+        {/* <Ionicons name="leaf" size={24} color="white" /> */}
+        <Text style={styles.title}>
+          {language === 'EN' ? 'Smart Krishi' : 'स्मार्ट कृषि'}
+        </Text>
       </View>
 
-      {/* Right: Language Toggle + Notification with Badge */}
       <View style={styles.rightSection}>
-        <TouchableOpacity onPress={toggleLanguage} style={styles.languageButton}>
+        <TouchableOpacity 
+          onPress={handleLanguageToggle} // Use the function to toggle language
+          style={styles.languageButton}
+        >
           <Text style={styles.languageText}>{language}</Text>
         </TouchableOpacity>
 
@@ -33,7 +41,9 @@ export default function HomeHeader() {
           <Ionicons name="notifications" size={24} color="white" />
           {notificationCount > 0 && (
             <View style={styles.badge}>
-              <Text style={styles.badgeText}>{notificationCount}</Text>
+              <Text style={styles.badgeText}>
+                {toNepaliDigits(notificationCount, language)} {/* Pass language here */}
+              </Text>
             </View>
           )}
         </View>

@@ -1,19 +1,26 @@
-// app/_layout.tsx
 import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Provider } from 'react-redux';
+import { store } from '../store/store'; // Import the Redux store
+import LocationFetcher from '../components/LocationFetcher'; // Import the LocationFetcher component
 import { AuthProvider } from '../context/AuthContext'; // adjust path if needed
 
 export default function RootLayout() {
   return (
     <AuthProvider>
+      <Provider store={store}>
       <SafeAreaProvider>
-        <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
+          <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
+            {/* Fetch location data when the app starts */}
+          <LocationFetcher />
+          {/* Render the current route */}
           <Slot />
-          <StatusBar style="dark" />
-        </View>
-      </SafeAreaProvider>
+            <StatusBar style="dark" />
+          </View>
+        </SafeAreaProvider>
     </AuthProvider>
+    </Provider>
   );
 }
