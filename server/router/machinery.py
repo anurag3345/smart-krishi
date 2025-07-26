@@ -7,6 +7,7 @@ import uuid
 from PIL import Image
 import io
 from datetime import datetime, timezone
+from models.notification import Notification
 
 from schemas.machinery import (
     MachineryCreate,
@@ -22,7 +23,6 @@ from models.machinery import Machinery, Booking
 from database import get_db
 from services.auth import get_current_user
 from models.user import User
-from services.sms import send_sms_notification
 from math import radians, cos, sin, asin, sqrt
 from fastapi import Depends
 from services.auth import get_current_user
@@ -139,66 +139,30 @@ async def book_machinery(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    # Get machinery
+    # Debug print to check what machinery is being queried
+    print(f"Looking for machinery with ID: {booking.machinery_id} and is_available=True")
+
     machinery = db.query(Machinery).filter(
         Machinery.id == booking.machinery_id,
         Machinery.is_available == True
     ).first()
     
+    print(f"Queried machinery: {machinery}")  # This should show None or Machinery object
+
     if not machinery:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Machinery not found or not available"
         )
     
-    # Check availability time
-    if booking.start_time < datetime.now(timezone.utc) or booking.end_time <= booking.start_time:
+    # Optional: check booking times fall within machinery availability
+    if booking.start_time < machinery.available_from or booking.end_time > machinery.available_to:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid booking time range"
+            detail="Booking time is outside machinery availability window"
         )
-    # Calculate total price
-    hours = (booking.end_time - booking.start_time).total_seconds() / 3600
-    total_price = machinery.price_per_hour * hours
     
-    if booking.delivery_type == DeliveryType.OWNER_DELIVERY:
-        if not machinery.delivery_available:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Delivery not available for this machinery"
-            )
-        total_price += machinery.delivery_charge or 0
-    
-    # Create booking
-    new_booking = Booking(
-        machinery_id=booking.machinery_id,
-        user_phone=booking.user_phone,
-        start_time=booking.start_time,
-        end_time=booking.end_time,
-        delivery_type=booking.delivery_type,
-        total_price=total_price
-    )
-    
-    # Mark machinery as booked
-    machinery.is_available = False
-    
-    db.add(new_booking)
-    db.commit()
-    db.refresh(new_booking)
-    
-    # Send notification to owner
-    message = f"Your machinery {machinery.name} has been booked by {current_user.name}"
-    send_sms_notification(machinery.owner_phone, message)
-    
-    # Prepare response
-    return {
-        **new_booking.__dict__,
-        "machinery_name": machinery.name,
-        "owner_name": machinery.owner_name,
-        "owner_phone": machinery.owner_phone,
-        "price_per_hour": machinery.price_per_hour,
-        "delivery_charge": machinery.delivery_charge if booking.delivery_type == DeliveryType.OWNER_DELIVERY else None
-    }
+    # ... rest of your booking logic
 
 @router.get("/bookings", response_model=List[BookingOut])
 async def get_user_bookings(

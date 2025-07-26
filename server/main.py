@@ -23,3 +23,7 @@ app.include_router(disease.router)
 @app.get("/")
 def read_root():
     return {"message": "Welcome to SMART KRISHI - AI-Powered Platform for Smarter Farming"}
+
+
+
+
