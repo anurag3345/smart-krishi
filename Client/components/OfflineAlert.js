@@ -33,8 +33,7 @@ export default function OfflineAlert() {
         <Text style={styles.text}>
           
         {lang === 'EN'
-          ? 'You are offline. Some features may not be available.
-        '
+          ? 'You are offline. Some features may not be available.'
           : 'तपाईं अफलाइन हुनुहुन्छ। केही सुविधाहरू उपलब्ध नहुन सक्छन्।'}
       </Text>
       </View>
