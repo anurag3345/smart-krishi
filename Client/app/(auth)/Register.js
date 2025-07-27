@@ -9,10 +9,12 @@ import {
   Alert,
   ScrollView,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  Image
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AuthContext } from '../../context/AuthContext';
+import Toast from 'react-native-toast-message';
 
 export default function Register() {
   const router = useRouter();
@@ -23,7 +25,7 @@ export default function Register() {
     email: '',
     password: '',
     phone: '',
-    role: 'user', // Default role
+    role: 'user',
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -43,32 +45,22 @@ export default function Register() {
 
   const validateForm = () => {
     const newErrors = {};
+    
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    else if (formData.name.trim().length < 2) newErrors.name = 'Name must be at least 2 characters';
+    else if (!/^[a-zA-Z\s]+$/.test(formData.name.trim())) newErrors.name = 'Name can only contain letters and spaces';
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Name must be at least 2 characters';
-    } else if (!/^[a-zA-Z\s]+$/.test(formData.name.trim())) {
-      newErrors.name = 'Name can only contain letters and spaces';
-    }
+    if (!formData.email.trim()) newErrors.email = 'Email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) newErrors.email = 'Please enter a valid email address';
 
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{6,}$/.test(formData.password)) {
+    if (!formData.password) newErrors.password = 'Password is required';
+    else if (formData.password.length < 6) newErrors.password = 'Password must be at least 6 characters';
+    else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{6,}$/.test(formData.password)) {
       newErrors.password = 'Password must contain uppercase, lowercase, and number';
     }
 
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else {
+    if (!formData.phone.trim()) newErrors.phone = 'Phone number is required';
+    else {
       const cleanPhone = formData.phone.replace(/[\s\-\(\)]/g, '');
       if (!/^[\+]?[1-9][\d]{0,15}$/.test(cleanPhone) || cleanPhone.length < 7) {
         newErrors.phone = 'Please enter a valid phone number';
@@ -80,9 +72,7 @@ export default function Register() {
   };
 
   const handleRegister = async () => {
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setLoading(true);
 
@@ -105,21 +95,18 @@ export default function Register() {
       const data = await response.json();
 
       if (response.ok) {
-        Alert.alert(
-          'Success', 
-          'Registration successful! Logging you in...',
-          [
-            {
-              text: 'OK',
-              onPress: async () => {
-                await signIn(data.token, data.user);
-                router.replace('/(tabs)/home');
-              }
-            }
-          ]
-        );
+        Toast.show({
+          type: 'success',
+          text1: 'Registration Successful',
+          text2: 'Your account has been created successfully!',
+          visibilityTime: 3000,
+          autoHide: true,
+          topOffset: 50,
+        });
+        
+        await signIn(data.token, data.user);
+        router.replace('/(tabs)/home');
       } else {
-        console.error('Registration failed:', data);
         if (data.errors && Array.isArray(data.errors)) {
           Alert.alert('Validation Error', data.errors.join('\n'));
         } else {
@@ -127,11 +114,7 @@ export default function Register() {
         }
       }
     } catch (error) {
-      console.error('Register error:', error);
-      Alert.alert(
-        'Network Error', 
-        'Please check your internet connection and try again.'
-      );
+      Alert.alert('Network Error', 'Please check your internet connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -146,13 +129,21 @@ export default function Register() {
         contentContainerStyle={styles.scrollContainer}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>Create Account</Text>
+        <View style={styles.header}>
+          <Image 
+            source={require('../../assets/images/logo.png')}
+            style={styles.logo}
+          />
+          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.subtitle}>Join our community today</Text>
+        </View>
 
         <View style={styles.formContainer}>
           {/* Name Input */}
           <View style={styles.inputContainer}>
+            <Text style={styles.label}>Full Name</Text>
             <TextInput
-              placeholder="Full Name"
+              placeholder="John Doe"
               autoCapitalize="words"
               value={formData.name}
               onChangeText={(value) => updateFormData('name', value)}
@@ -165,8 +156,9 @@ export default function Register() {
 
           {/* Email Input */}
           <View style={styles.inputContainer}>
+            <Text style={styles.label}>Email Address</Text>
             <TextInput
-              placeholder="Email Address"
+              placeholder="example@email.com"
               keyboardType="email-address"
               autoCapitalize="none"
               value={formData.email}
@@ -180,8 +172,9 @@ export default function Register() {
 
           {/* Password Input */}
           <View style={styles.inputContainer}>
+            <Text style={styles.label}>Password</Text>
             <TextInput
-              placeholder="Password"
+              placeholder="••••••••"
               secureTextEntry
               value={formData.password}
               onChangeText={(value) => updateFormData('password', value)}
@@ -197,8 +190,9 @@ export default function Register() {
 
           {/* Phone Input */}
           <View style={styles.inputContainer}>
+            <Text style={styles.label}>Phone Number</Text>
             <TextInput
-              placeholder="Phone Number"
+              placeholder="+1 (123) 456-7890"
               keyboardType="phone-pad"
               value={formData.phone}
               onChangeText={(value) => updateFormData('phone', value)}
@@ -211,7 +205,7 @@ export default function Register() {
 
           {/* Role Selector */}
           <View style={styles.roleContainer}>
-            <Text style={styles.roleLabel}>Select Role</Text>
+            <Text style={styles.label}>Account Type</Text>
             <View style={styles.roleButtons}>
               {['user', 'farmer'].map(r => (
                 <TouchableOpacity
@@ -240,6 +234,7 @@ export default function Register() {
             style={[styles.button, loading && styles.buttonDisabled]} 
             onPress={handleRegister} 
             disabled={loading}
+            activeOpacity={0.8}
           >
             {loading ? (
               <ActivityIndicator color="#fff" size="small" />
@@ -249,16 +244,15 @@ export default function Register() {
           </TouchableOpacity>
 
           {/* Login Link */}
-          <TouchableOpacity 
-            onPress={() => router.push('/(auth)/Login')}
-            disabled={loading}
-          >
-            <Text style={styles.linkText}>
-              Already have an account? <Text style={styles.linkTextBold}>Sign In</Text>
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.loginContainer}>
+            <Text style={styles.loginText}>Already have an account?</Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/Login')}>
+              <Text style={styles.loginLink}> Sign In</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
+      <Toast />
     </KeyboardAvoidingView>
   );
 }
@@ -266,40 +260,61 @@ export default function Register() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafe',
+    backgroundColor: '#ffffff',
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 32,
-    paddingVertical: 40,
+    paddingBottom: 40,
+  },
+  header: {
+    alignItems: 'center',
+    paddingTop: 40,
+    paddingBottom: 20,
+    backgroundColor: '#4CAF50',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    marginBottom: 20,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: 20,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    padding: 10,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '700',
-    marginBottom: 32,
-    color: '#222',
-    textAlign: 'center',
+    color: 'white',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#e8f5e9',
   },
   formContainer: {
-    width: '100%',
+    paddingHorizontal: 24,
+    marginTop: 10,
   },
   inputContainer: {
     marginBottom: 20,
   },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2e7d32',
+    marginBottom: 8,
+  },
   input: {
-    backgroundColor: '#fff',
+    backgroundColor: '#f8fafc',
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 12,
     fontSize: 16,
-    borderColor: '#e1e5e9',
+    color: '#1a202c',
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderColor: '#e8f5e9',
   },
   inputError: {
     borderColor: '#e74c3c',
@@ -318,15 +333,15 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   button: {
-    backgroundColor: '#5cb85c',
+    backgroundColor: '#4CAF50',
     paddingVertical: 16,
     borderRadius: 12,
-    marginTop: 12,
+    marginTop: 24,
     alignItems: 'center',
-    shadowColor: '#5cb85c',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowColor: '#388E3C',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 3,
   },
   buttonDisabled: {
@@ -335,26 +350,10 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#fff',
     fontWeight: '600',
-    fontSize: 18,
-  },
-  linkText: {
-    marginTop: 24,
-    color: '#6c757d',
-    textAlign: 'center',
     fontSize: 16,
-  },
-  linkTextBold: {
-    color: '#5cb85c',
-    fontWeight: '600',
   },
   roleContainer: {
     marginBottom: 20,
-  },
-  roleLabel: {
-    marginBottom: 8,
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#333',
   },
   roleButtons: {
     flexDirection: 'row',
@@ -364,14 +363,14 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#e8f5e9',
     borderRadius: 10,
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#f8fafc',
   },
   roleButtonSelected: {
-    backgroundColor: '#5cb85c',
-    borderColor: '#5cb85c',
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
   },
   roleButtonText: {
     color: '#555',
@@ -379,5 +378,19 @@ const styles = StyleSheet.create({
   },
   roleButtonTextSelected: {
     color: '#fff',
+  },
+  loginContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 24,
+  },
+  loginText: {
+    color: '#6c757d',
+    fontSize: 16,
+  },
+  loginLink: {
+    color: '#4CAF50',
+    fontWeight: '600',
+    fontSize: 16,
   },
 });

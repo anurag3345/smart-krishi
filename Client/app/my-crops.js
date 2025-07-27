@@ -16,10 +16,9 @@ import { useRouter } from 'expo-router';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Toast from 'react-native-toast-message';
 import cropLifecycle from '../constants/cropdata/cropLifecycles.json';
 import weatherGuide from '../constants/cropdata/weatherGuide.json';
-
-// No CropDetails import here because it's now a separate screen
 
 const MyCrops = () => {
   const router = useRouter();
@@ -44,7 +43,7 @@ const MyCrops = () => {
       fertilizeDays: 5,
       icon: '🍅',
       needsAttention: false,
-      isDefault: true, // Flag to identify default crops
+      isDefault: true,
     },
     {
       id: 2,
@@ -90,7 +89,6 @@ const MyCrops = () => {
     }
   }, [crops, isLoading]);
 
-  // Load crops from storage
   const loadCrops = async () => {
     try {
       const storedCrops = await AsyncStorage.getItem('userCrops');
@@ -98,19 +96,16 @@ const MyCrops = () => {
         const parsedCrops = JSON.parse(storedCrops);
         setCrops(parsedCrops);
       } else {
-        // First time user - set default crops
         setCrops(getDefaultCrops());
       }
     } catch (error) {
       console.error('Error loading crops:', error);
-      // Fallback to default crops on error
       setCrops(getDefaultCrops());
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Save crops to storage
   const saveCrops = async () => {
     try {
       await AsyncStorage.setItem('userCrops', JSON.stringify(crops));
@@ -119,7 +114,6 @@ const MyCrops = () => {
     }
   };
 
-  // Clear all data (for testing purposes)
   const clearAllData = async () => {
     try {
       await AsyncStorage.removeItem('userCrops');
@@ -131,8 +125,6 @@ const MyCrops = () => {
   };
 
   const [modalVisible, setModalVisible] = useState(false);
-
-  // Form states for adding new crop
   const [newCropName, setNewCropName] = useState('Wheat');
   const [newSowingDate, setNewSowingDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -153,7 +145,6 @@ const MyCrops = () => {
     Rice: 'Basmati',
   };
 
-  // Recommended crops data
   const recommendedCrops = [
     { name: 'Wheat', icon: '🌾', description: 'Winter crop' },
     { name: 'Maize', icon: '🌽', description: 'Summer crop' },
@@ -165,24 +156,18 @@ const MyCrops = () => {
     { name: 'Lettuce', icon: '🥬', description: 'Leafy green' },
   ];
 
-  // Function to calculate the week since sowing date
   const getCurrentWeek = (sowingDate) => {
     const now = new Date();
     const sowDate = new Date(sowingDate);
     const diffInMs = now - sowDate;
     const diffInWeeks = Math.floor(diffInMs / (1000 * 60 * 60 * 24 * 7));
-    return Math.max(diffInWeeks + 1, 1); // Ensure at least week 1
+    return Math.max(diffInWeeks + 1, 1);
   };
 
-  // Function to fetch current temperature (mock implementation)
   const getCurrentTemperature = async () => {
-      // In a real app, you would make an API call here
-      // For now, returning mock data
-      return 28; // mock temperature in Celsius
-
+    return 28; // mock temperature
   };
 
-  // Function to calculate expected harvest date
   const calculateExpectedHarvest = (sowingDate, cropName) => {
     const lifecycle = cropLifecycle[cropName];
     if (!lifecycle || lifecycle.length === 0) return null;
@@ -215,53 +200,38 @@ const MyCrops = () => {
 
     try {
       const newId = crops.length ? Math.max(...crops.map(c => c.id)) + 1 : 1;
-
-      // 1. Calculate the current week
       const currentWeek = getCurrentWeek(newSowingDate);
-
-      // 2. Determine stage
       const lifecycle = cropLifecycle[newCropName];
+      
       if (!lifecycle || lifecycle.length === 0) {
         Alert.alert('Error', `Lifecycle data not found for ${newCropName}`);
         return;
       }
 
-      // Find the current stage based on week
       let currentStageObj = lifecycle.find((item) => item.week === currentWeek);
       
-      // If current week exceeds lifecycle, use the last stage
       if (!currentStageObj) {
         if (currentWeek > lifecycle[lifecycle.length - 1].week) {
           currentStageObj = lifecycle[lifecycle.length - 1];
         } else {
-          // If somehow we're before week 1, use first stage
           currentStageObj = lifecycle[0];
         }
       }
 
       const currentStage = currentStageObj.stage;
-
-      // 3. Get temperature range for the stage
       const weatherData = weatherGuide[newCropName]?.[currentStage];
+      
       if (!weatherData) {
         Alert.alert('Error', `Weather data not found for ${newCropName} at ${currentStage} stage`);
         return;
       }
 
       const [minTemp, maxTemp] = weatherData.temp || [0, 100];
-
-      // 4. Fetch current temperature
       const currentTemp = await getCurrentTemperature();
-
-      // 5. Compare and determine if favorable
       const isFavorable = currentTemp >= minTemp && currentTemp <= maxTemp;
       const weatherTips = weatherData.tips || 'No specific tips available.';
-
-      // 6. Calculate progress percentage
       const totalWeeks = lifecycle[lifecycle.length - 1].week;
       const progress = Math.min((currentWeek / totalWeeks) * 100, 100);
-
-      // 7. Calculate expected harvest date
       const expectedHarvest = calculateExpectedHarvest(newSowingDate, newCropName);
 
       const newCrop = {
@@ -281,27 +251,34 @@ const MyCrops = () => {
         currentTemp: currentTemp,
         tempRange: [minTemp, maxTemp],
         readyForHarvest: currentStage.toLowerCase().includes('harvest') || currentStage.toLowerCase().includes('maturity'),
-        // Add some random care reminders for demonstration
         waterDays: Math.floor(Math.random() * 7) + 1,
         fertilizeDays: Math.floor(Math.random() * 14) + 1,
-        // Add timestamp for sorting
         addedAt: new Date().getTime(),
-        isRecentlyAdded: true, // Flag to identify recently added crops
+        isRecentlyAdded: true,
       };
 
-      setCrops((prev) => [newCrop, ...prev]); // Add new crop at the beginning
+      setCrops((prev) => [newCrop, ...prev]);
       setModalVisible(false);
       setNewCropName('Wheat');
       setNewSowingDate(new Date());
 
-      // Show success message with crop details
-      Alert.alert(
-        'Crop Added Successfully!',
-        `${newCropName} is currently in ${currentStage} stage (Week ${currentWeek})\n\n` +
-        `Current conditions are ${isFavorable ? 'favorable' : 'not favorable'} for growth.\n\n` +
-        `Temperature: ${currentTemp}°C (Optimal: ${minTemp}-${maxTemp}°C)\n\n` +
-        `Tips: ${weatherTips}`
-      );
+      // Show toast notification
+      Toast.show({
+        type: 'success',
+        text1: 'Crop Added Successfully',
+        text2: `${newCropName} has been added to your farm`,
+        position: 'top',
+        topOffset: 50,
+        visibilityTime: 3000,
+        autoHide: true,
+        props: {
+          style: { 
+            alignSelf: 'flex-end',
+            marginRight: 20,
+            width: '70%'
+          }
+        }
+      });
 
     } catch (error) {
       console.error('Error adding crop:', error);
@@ -309,33 +286,21 @@ const MyCrops = () => {
     }
   };
 
-  // Function to handle recommended crop selection
   const selectRecommendedCrop = (cropName) => {
     setNewCropName(cropName);
   };
 
-  // Function to sort crops - recently added first, then by addedAt timestamp
   const getSortedCrops = () => {
     return [...crops].sort((a, b) => {
-      // Recently added crops first
       if (a.isRecentlyAdded && !b.isRecentlyAdded) return -1;
       if (!a.isRecentlyAdded && b.isRecentlyAdded) return 1;
-      
-      // If both are recently added or both are not, sort by addedAt (newest first)
-      if (a.addedAt && b.addedAt) {
-        return b.addedAt - a.addedAt;
-      }
-      
-      // Default crops (no addedAt) go after user-added crops
+      if (a.addedAt && b.addedAt) return b.addedAt - a.addedAt;
       if (a.addedAt && !b.addedAt) return -1;
       if (!a.addedAt && b.addedAt) return 1;
-      
-      // For default crops, maintain original order
       return a.id - b.id;
     });
   };
 
-  // Function to mark recently added crops as seen (remove highlight after some time)
   const markRecentCropsAsSeen = () => {
     setCrops(prevCrops => 
       prevCrops.map(crop => ({
@@ -345,31 +310,27 @@ const MyCrops = () => {
     );
   };
 
-  // Auto-remove "recently added" flag after 10 seconds
   useEffect(() => {
     const hasRecentCrops = crops.some(crop => crop.isRecentlyAdded);
     if (hasRecentCrops) {
       const timer = setTimeout(() => {
         markRecentCropsAsSeen();
-      }, 10000); // 10 seconds
+      }, 10000);
 
       return () => clearTimeout(timer);
     }
   }, [crops]);
 
-  // Function to get attention count
   const getAttentionCount = () => {
     return crops.filter(crop => crop.needsAttention).length;
   };
 
-  // Function to get ready soon count
   const getReadySoonCount = () => {
     return crops.filter(crop => 
       crop.progress >= 80 && crop.progress < 100 && !crop.readyForHarvest
     ).length;
   };
 
-  // Crop Card component: On press, navigate to CropDetails screen passing crop data as JSON string
   const CropCard = ({ crop }) => (
     <TouchableOpacity
       style={[
@@ -384,7 +345,6 @@ const MyCrops = () => {
         })
       }
     >
-      {/* Recently Added Badge */}
       {crop.isRecentlyAdded && (
         <View style={styles.recentlyAddedBadge}>
           <Text style={styles.recentlyAddedText}>✨ Recently Added</Text>
@@ -436,15 +396,10 @@ const MyCrops = () => {
         )}
       </View>
 
-      {/* Show temperature info and tips for dynamically added crops */}
       {crop.currentTemp && crop.tempRange && (
         <View style={styles.weatherInfo}>
           <View style={styles.weatherRow}>
-            <Ionicons 
-              name="thermometer" 
-              size={16} 
-              color={crop.statusColor} 
-            />
+            <Ionicons name="thermometer" size={16} color={crop.statusColor} />
             <Text style={styles.weatherText}>
               {crop.currentTemp}°C (Optimal: {crop.tempRange[0]}-{crop.tempRange[1]}°C)
             </Text>
@@ -509,7 +464,6 @@ const MyCrops = () => {
           <TouchableOpacity style={styles.headerButton} onPress={() => setModalVisible(true)}>
             <Ionicons name="add" size={24} color="white" />
           </TouchableOpacity>
-          {/* Debug button - remove in production */}
           <TouchableOpacity style={styles.headerButton} onPress={clearAllData}>
             <Ionicons name="trash" size={24} color="white" />
           </TouchableOpacity>
@@ -596,7 +550,6 @@ const MyCrops = () => {
       >
         <View style={styles.modalBackground}>
           <View style={styles.modalContainer}>
-            {/* Modal Header with Close Button */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Add New Crop</Text>
               <TouchableOpacity 
@@ -681,6 +634,9 @@ const MyCrops = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Toast Component */}
+      <Toast />
     </SafeAreaView>
   );
 };
@@ -1040,7 +996,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  // Modal header styles
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1088,7 +1043,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#333',
   },
-  // Recommended crops styles
   recommendedSection: {
     marginBottom: 20,
   },
@@ -1165,6 +1119,28 @@ const styles = StyleSheet.create({
     color: '#666',
     textAlign: 'center',
   },
+  // Toast styles
+  toastContainer: {
+    position: 'absolute',
+    right: 20,
+    top: 50,
+    width: '70%',
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  toastText1: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  toastText2: {
+    fontSize: 14,
+    color: 'white',
+  }
 });
 
 export default MyCrops;

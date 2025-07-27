@@ -1,4 +1,4 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   StatusBar,
   SafeAreaView,
 } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { FontAwesome5 } from "@expo/vector-icons";
 import CropForm from "../components/CropForm"; // Adjust path accordingly
 import OrderProduct from "../components/OrderProduct"; // Renamed from OrderCrop
@@ -27,6 +28,7 @@ const cropImages = {
   "onions": require("../assets/crops/onion.jpg"),
   "potatoes": require("../assets/crops/potato.jpg"),
   "beans": require("../assets/images/beans.jpg"),
+  "tomatoes": require("../assets/images/tomato.jpg"),
   
   // Fruits
   "corn": require("../assets/images/corn.jpg"),
@@ -83,6 +85,7 @@ const initialRecentProducts = [
     unit: "kg",
     distance: "2.5 km",
     heart: false,
+    isUserListed: false,
   },
   {
     id: "p2",
@@ -94,6 +97,7 @@ const initialRecentProducts = [
     unit: "kg",
     distance: "1.2 km",
     heart: true,
+    isUserListed: false,
   },
   {
     id: "p3",
@@ -105,6 +109,7 @@ const initialRecentProducts = [
     unit: "kg",
     distance: "3.1 km",
     heart: false,
+    isUserListed: false,
   },
 ];
 
@@ -118,6 +123,12 @@ const messages = [
 ];
 
 const filterOptions = ["All", "Vegetables", "Fruits", "Grains", "Near Me"];
+
+// AsyncStorage keys
+const STORAGE_KEYS = {
+  PRODUCTS: '@agricultural_market_products',
+  USER_PRODUCTS: '@user_listed_products',
+};
 
 function Chip({ label, active, onPress }) {
   return (
@@ -133,8 +144,9 @@ function Chip({ label, active, onPress }) {
 }
 
 export default function RentCrop({ navigation }) {
-   const {user} = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   const [products, setProducts] = useState(initialRecentProducts);
+  const [userListedProducts, setUserListedProducts] = useState([]);
   const [searchText, setSearchText] = useState("");
   const [selectedFilter, setSelectedFilter] = useState("All");
   const [modalVisible, setModalVisible] = useState(false);
@@ -144,12 +156,50 @@ export default function RentCrop({ navigation }) {
   const [orderModalVisible, setOrderModalVisible] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  const toggleHeart = (id) => {
-    setProducts((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, heart: !item.heart } : item
-      )
+  // Load products from AsyncStorage on component mount
+  useEffect(() => {
+    loadStoredProducts();
+  }, []);
+
+  const loadStoredProducts = async () => {
+    try {
+      // Load all products
+      const storedProducts = await AsyncStorage.getItem(STORAGE_KEYS.PRODUCTS);
+      if (storedProducts) {
+        const parsedProducts = JSON.parse(storedProducts);
+        setProducts(parsedProducts);
+      }
+
+      // Load user-specific products
+      const storedUserProducts = await AsyncStorage.getItem(STORAGE_KEYS.USER_PRODUCTS);
+      if (storedUserProducts) {
+        const parsedUserProducts = JSON.parse(storedUserProducts);
+        setUserListedProducts(parsedUserProducts);
+      }
+    } catch (error) {
+      console.error('Error loading products from AsyncStorage:', error);
+    }
+  };
+
+  const saveProductsToStorage = async (updatedProducts, updatedUserProducts = null) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(updatedProducts));
+      
+      if (updatedUserProducts !== null) {
+        await AsyncStorage.setItem(STORAGE_KEYS.USER_PRODUCTS, JSON.stringify(updatedUserProducts));
+      }
+    } catch (error) {
+      console.error('Error saving products to AsyncStorage:', error);
+    }
+  };
+
+  const toggleHeart = async (id) => {
+    const updatedProducts = products.map((item) =>
+      item.id === id ? { ...item, heart: !item.heart } : item
     );
+    
+    setProducts(updatedProducts);
+    await saveProductsToStorage(updatedProducts);
   };
 
   const filteredProducts = products.filter((item) => {
@@ -162,27 +212,46 @@ export default function RentCrop({ navigation }) {
     return matchesSearch && item.category === selectedFilter;
   });
 
-  // Sort so hearted products appear first
+  // Sort so hearted products appear first, then user-listed products
   const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (a.heart === b.heart) return 0;
-    return a.heart ? -1 : 1;
+    if (a.heart !== b.heart) {
+      return a.heart ? -1 : 1;
+    }
+    if (a.isUserListed !== b.isUserListed) {
+      return a.isUserListed ? -1 : 1;
+    }
+    return 0;
   });
 
-  const handleFormSubmit = (formData) => {
-    setProducts((prev) => [
-      {
-        id: `p${prev.length + 1}`,
-        category: formData.category,
-        name: formData.productName,
-        desc: formData.description || "",
-        price: `₹${formData.pricePerUnit}/${formData.unit}`,
-        available: parseInt(formData.quantity) || 0,
-        unit: formData.unit,
-        distance: "0 km",
-        heart: false,
-      },
-      ...prev,
-    ]);
+  const handleFormSubmit = async (formData) => {
+    const newProduct = {
+      id: `user_${Date.now()}`, // Unique ID with timestamp
+      category: formData.type, // Note: using 'type' from formData
+      name: formData.name, // Note: using 'name' from formData
+      desc: formData.description || "Fresh produce from local farm",
+      price: `₹${formData.price}/${formData.unit}`,
+      available: parseInt(formData.quantity) || 0,
+      unit: formData.unit,
+      distance: "0 km", // User's own product
+      heart: false,
+      isUserListed: true,
+      location: formData.location,
+      deliveryHome: formData.delivery_home,
+      deliveryPickup: formData.delivery_pickup,
+      imageUrl: formData.image_url,
+      userId: formData.user_id,
+      dateAdded: new Date().toISOString(),
+    };
+
+    // Add to the beginning of products array (most recent first)
+    const updatedProducts = [newProduct, ...products];
+    const updatedUserProducts = [newProduct, ...userListedProducts];
+    
+    setProducts(updatedProducts);
+    setUserListedProducts(updatedUserProducts);
+    
+    // Save to AsyncStorage
+    await saveProductsToStorage(updatedProducts, updatedUserProducts);
   };
 
   // Open order modal with selected product data
@@ -198,17 +267,44 @@ export default function RentCrop({ navigation }) {
   };
 
   // Handle successful order - decrease quantity
-  const handleOrderSuccess = (productId, orderedQuantity) => {
-    setProducts((prev) =>
-      prev.map((item) =>
-        item.id === productId
-          ? { ...item, available: Math.max(0, item.available - orderedQuantity) }
-          : item
-      )
+  const handleOrderSuccess = async (productId, orderedQuantity) => {
+    const updatedProducts = products.map((item) =>
+      item.id === productId
+        ? { ...item, available: Math.max(0, item.available - orderedQuantity) }
+        : item
     );
+    
+    // Also update user products if it's a user-listed product
+    const updatedUserProducts = userListedProducts.map((item) =>
+      item.id === productId
+        ? { ...item, available: Math.max(0, item.available - orderedQuantity) }
+        : item
+    );
+
+    setProducts(updatedProducts);
+    setUserListedProducts(updatedUserProducts);
+    
+    // Save to AsyncStorage
+    await saveProductsToStorage(updatedProducts, updatedUserProducts);
+    
     setOrderModalVisible(false);
     setSelectedProduct(null);
   };
+
+  // Get user's active listings count and total views
+  const getUserListingStats = () => {
+    const activeListings = userListedProducts.filter(product => product.available > 0);
+    const totalViews = userListedProducts.reduce((sum, product) => sum + (product.views || 0), 0);
+    const totalInquiries = userListedProducts.reduce((sum, product) => sum + (product.inquiries || 0), 0);
+    
+    return {
+      count: activeListings.length,
+      totalViews,
+      totalInquiries
+    };
+  };
+
+  const userStats = getUserListingStats();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -284,46 +380,54 @@ export default function RentCrop({ navigation }) {
           </ScrollView>
 
           {/* My Active Listings */}
-
-          {user?.role === 'farmer' && <Text style={styles.sectionTitle}>My Active Listings</Text>}
-
-          {user?.role === 'farmer' &&           <View style={styles.listingCard}>
-            <View style={styles.listingIconContainer}>
-             <Image
-  source={require('../assets/images/tomato.jpg')}
-  style={{ width: 24, height: 24 }}
-/>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.listingTitle}>{activeListing.name}</Text>
-              <Text style={styles.listingSub}>
-                {activeListing.price} • {activeListing.available} available
-              </Text>
-              <View style={styles.metaRow}>
-                <View style={styles.activeStatus}>
-                  <Text style={styles.activeText}>Active</Text>
+          {user?.role === 'farmer' && (
+            <>
+              <Text style={styles.sectionTitle}>My Active Listings</Text>
+              <View style={styles.listingCard}>
+                <View style={styles.listingIconContainer}>
+                  <Image
+                    source={require('../assets/images/tomato.jpg')}
+                    style={{ width: 24, height: 24 }}
+                  />
                 </View>
-                <Text style={styles.metaInfo}>
-                  {activeListing.views} views • {activeListing.inquiries} inquiries
-                </Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.listingTitle}>
+                    {userStats.count > 0 ? `${userStats.count} Active Products` : 'No Active Listings'}
+                  </Text>
+                  <Text style={styles.listingSub}>
+                    {userStats.count > 0 
+                      ? `Total inventory available for sale`
+                      : 'Start listing your products'
+                    }
+                  </Text>
+                  <View style={styles.metaRow}>
+                    <View style={styles.activeStatus}>
+                      <Text style={styles.activeText}>
+                        {userStats.count > 0 ? 'Active' : 'Inactive'}
+                      </Text>
+                    </View>
+                    <Text style={styles.metaInfo}>
+                      {userStats.totalViews} views • {userStats.totalInquiries} inquiries
+                    </Text>
+                  </View>
+                </View>
               </View>
-            </View>
-          </View>}
-          
 
-          {/* List Your Product Button */}
-          {user?.role === 'farmer' &&           <TouchableOpacity
-            style={styles.listProductBtn}
-            onPress={() => setModalVisible(true)}
-          >
-            <FontAwesome5
-              name="plus"
-              size={18}
-              color="#fff"
-              style={{ marginRight: 10 }}
-            />
-            <Text style={styles.listProductText}>List Your Product</Text>
-          </TouchableOpacity>}
+              {/* List Your Product Button */}
+              <TouchableOpacity
+                style={styles.listProductBtn}
+                onPress={() => setModalVisible(true)}
+              >
+                <FontAwesome5
+                  name="plus"
+                  size={18}
+                  color="#fff"
+                  style={{ marginRight: 10 }}
+                />
+                <Text style={styles.listProductText}>List Your Product</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
           {/* Recent Products */}
           <View style={styles.rowBetween}>
@@ -335,16 +439,30 @@ export default function RentCrop({ navigation }) {
 
           {sortedProducts.length > 0 ? (
             sortedProducts.map((item) => (
-              <View style={styles.productCard} key={item.id}>
+              <View style={[
+                styles.productCard,
+                item.isUserListed && styles.userListedCard
+              ]} key={item.id}>
                 <View style={styles.productIconContainer}>
-                  <Image
-                    source={getCropImage(item.name)}
-                    style={styles.productImage}
-                    resizeMode="cover"
-                  />
+                  {item.imageUrl ? (
+                    <Image
+                      source={{ uri: item.imageUrl }}
+                      style={styles.productImage}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <Image
+                      source={getCropImage(item.name)}
+                      style={styles.productImage}
+                      resizeMode="cover"
+                    />
+                  )}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.productTitle}>{item.name}</Text>
+                  <View style={styles.productTitleRow}>
+                    <Text style={styles.productTitle}>{item.name}</Text>
+                    {item.isUserListed && <Text style={styles.myProductTag}>My Product</Text>}
+                  </View>
                   <Text style={styles.productSub}>{item.desc}</Text>
                   <Text style={styles.productMeta}>
                     {item.price} • {item.available}{item.unit} available
@@ -366,21 +484,28 @@ export default function RentCrop({ navigation }) {
                       solid={item.heart}
                     />
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[
-                      styles.buyButton,
-                      item.available <= 0 && styles.buyButtonDisabled
-                    ]}
-                    onPress={() => onOrderPress(item)}
-                    disabled={item.available <= 0}
-                  >
-                    <Text style={[
-                      styles.buyButtonText,
-                      item.available <= 0 && styles.buyButtonTextDisabled
-                    ]}>
-                      {item.available <= 0 ? "Out of Stock" : "Buy Now"}
-                    </Text>
-                  </TouchableOpacity>
+                  {!item.isUserListed && (
+                    <TouchableOpacity
+                      style={[
+                        styles.buyButton,
+                        item.available <= 0 && styles.buyButtonDisabled
+                      ]}
+                      onPress={() => onOrderPress(item)}
+                      disabled={item.available <= 0}
+                    >
+                      <Text style={[
+                        styles.buyButtonText,
+                        item.available <= 0 && styles.buyButtonTextDisabled
+                      ]}>
+                        {item.available <= 0 ? "Out of Stock" : "Buy Now"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  {item.isUserListed && (
+                    <View style={styles.myProductActions}>
+                      <Text style={styles.myProductStatus}>Your Product</Text>
+                    </View>
+                  )}
                 </View>
               </View>
             ))
@@ -392,9 +517,7 @@ export default function RentCrop({ navigation }) {
             </View>
           )}
 
-
-
-           <FavoriteFarmers title="NearBy Farmers" />
+          <FavoriteFarmers title="NearBy Farmers" />
 
           {/* Recent Messages */}
           <Text style={styles.sectionTitle}>Recent Messages</Text>
@@ -417,8 +540,6 @@ export default function RentCrop({ navigation }) {
               </View>
             </TouchableOpacity>
           ))}
-
-         
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -460,14 +581,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
-  // backButton: {
-  //   width: 40,
-  //   height: 40,
-  //   borderRadius: 20,
-  //   backgroundColor: "#f8f8f8",
-  //   alignItems: "center",
-  //   justifyContent: "center",
-  // },
   topBarTitle: {
     fontSize: 18,
     fontWeight: "bold",
@@ -648,6 +761,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 2,
   },
+  userListedCard: {
+    borderLeftWidth: 4,
+    borderLeftColor: "#4CAF50",
+    backgroundColor: "#f8fff8",
+  },
   productIconContainer: {
     width: 56,
     height: 56,
@@ -663,11 +781,26 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
   },
+  productTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 2,
+  },
   productTitle: { 
     fontWeight: "bold", 
     fontSize: 16,
     color: "#333",
-    marginBottom: 2,
+    flex: 1,
+  },
+  myProductTag: {
+    backgroundColor: "#4CAF50",
+    color: "#fff",
+    fontSize: 10,
+    fontWeight: "600",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    textTransform: "uppercase",
   },
   productSub: { 
     color: "#666",
@@ -712,6 +845,15 @@ const styles = StyleSheet.create({
   },
   buyButtonTextDisabled: {
     color: "#999",
+  },
+  myProductActions: {
+    alignItems: "center",
+  },
+  myProductStatus: {
+    color: "#4CAF50",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
   },
   emptyState: {
     alignItems: "center",

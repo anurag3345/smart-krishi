@@ -11,6 +11,8 @@ import {
   Platform,
   Image,
   Alert,
+  Animated,
+  Dimensions,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Checkbox from "expo-checkbox";
@@ -19,6 +21,7 @@ import { FontAwesome5 } from "@expo/vector-icons";
 import { listProduct } from '../services/product'; 
 import Toast from 'react-native-toast-message';
 
+const { width } = Dimensions.get('window');
 const categoryOptions = ["Vegetables", "Fruits", "Grains"];
 
 export default function CropForm({ visible, onClose, onSubmit }) {
@@ -32,20 +35,49 @@ export default function CropForm({ visible, onClose, onSubmit }) {
   const [deliveryPickup, setDeliveryPickup] = useState(false);
   const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Animation values
+  const slideAnim = useState(new Animated.Value(300))[0];
+  const fadeAnim = useState(new Animated.Value(0))[0];
 
   useEffect(() => {
-    if (!visible) {
-      setProductName("");
-      setCategory("Vegetables");
-      setQuantity("");
-      setPricePerUnit("");
-      setLocation("");
-      setDeliveryHome(false);
-      setDeliveryPickup(false);
-      setDescription("");
-      setImage(null);
+    if (visible) {
+      // Animate modal in
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start();
+    } else {
+      // Reset form when modal closes
+      resetForm();
     }
   }, [visible]);
+
+  const resetForm = () => {
+    setProductName("");
+    setCategory("Vegetables");
+    setQuantity("");
+    setPricePerUnit("");
+    setLocation("");
+    setDeliveryHome(false);
+    setDeliveryPickup(false);
+    setDescription("");
+    setImage(null);
+    setIsSubmitting(false);
+    
+    // Reset animations
+    slideAnim.setValue(300);
+    fadeAnim.setValue(0);
+  };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -60,11 +92,11 @@ export default function CropForm({ visible, onClose, onSubmit }) {
       aspect: [1, 1],
     });
     
-    console.log("Image picker result:", result); // Debug log
+    console.log("Image picker result:", result);
     
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const imageUri = result.assets[0].uri;
-      console.log("Setting image URI:", imageUri); // Debug log
+      console.log("Setting image URI:", imageUri);
       setImage(imageUri);
     }
   };
@@ -81,236 +113,393 @@ export default function CropForm({ visible, onClose, onSubmit }) {
       aspect: [1, 1],
     });
     
-    console.log("Camera result:", result); // Debug log
+    console.log("Camera result:", result);
     
     if (!result.canceled && result.assets && result.assets.length > 0) {
       const imageUri = result.assets[0].uri;
-      console.log("Setting camera image URI:", imageUri); // Debug log
+      console.log("Setting camera image URI:", imageUri);
       setImage(imageUri);
     }
   };
 
   const handleSubmit = async () => {
-  if (!productName.trim()) {
-    Alert.alert("Validation", "Please enter product name");
-    return;
-  }
-  const quantityNum = Number(quantity);
-  if (!quantity || isNaN(quantityNum) || quantityNum <= 20) {
-    Alert.alert("Validation", "Quantity must be a number greater than 20");
-    return;
-  }
-  if (!pricePerUnit || isNaN(Number(pricePerUnit))) {
-    Alert.alert("Validation", "Please enter valid price per unit");
-    return;
-  }
-  if (!location.trim()) {
-    Alert.alert("Validation", "Please enter location");
-    return;
-  }
+    // Validation
+    if (!productName.trim()) {
+      Alert.alert("Validation Error", "Please enter product name", [
+        { text: "OK", style: "default" }
+      ]);
+      return;
+    }
+    
+    const quantityNum = Number(quantity);
+    if (!quantity || isNaN(quantityNum) || quantityNum <= 20) {
+      Alert.alert("Validation Error", "Quantity must be a number greater than 20", [
+        { text: "OK", style: "default" }
+      ]);
+      return;
+    }
+    
+    if (!pricePerUnit || isNaN(Number(pricePerUnit))) {
+      Alert.alert("Validation Error", "Please enter valid price per unit", [
+        { text: "OK", style: "default" }
+      ]);
+      return;
+    }
+    
+    if (!location.trim()) {
+      Alert.alert("Validation Error", "Please enter location", [
+        { text: "OK", style: "default" }
+      ]);
+      return;
+    }
 
-  // Prepare the form data
-  const formData = {
-    name: productName,
-    type: category,
-    quantity: quantity,
-    unit: unit,
-    price: pricePerUnit,
-    location: location,
-    delivery_home: deliveryHome,
-    delivery_pickup: deliveryPickup,
-    description: description,
-    image_url: image,
-    user_id: "some_user_id_here", // Replace with actual user_id
+    setIsSubmitting(true);
+
+    // Prepare the form data for API call
+    const apiFormData = {
+      name: productName,
+      type: category,
+      quantity: quantity,
+      unit: unit,
+      price: pricePerUnit,
+      location: location,
+      delivery_home: deliveryHome,
+      delivery_pickup: deliveryPickup,
+      description: description,
+      image_url: image,
+      user_id: "some_user_id_here", // This should be replaced with actual user_id from context
+    };
+
+    try {
+      // Call the API function with the form data
+      await listProduct(apiFormData);
+
+      // Show success toast
+      Toast.show({
+        type: 'success',
+        position: 'bottom',
+        text1: '✅ Product Listed Successfully!',
+        text2: 'Your product is now available for buyers to see.',
+        visibilityTime: 4000,
+        autoHide: true,
+        topOffset: 60,
+        bottomOffset: 40,
+      });
+
+      // Call the parent component's onSubmit function to update local state
+      if (onSubmit) {
+        onSubmit(apiFormData);
+      }
+
+      // Close the form after submitting
+      closeModal();
+    } catch (error) {
+      // Show error toast
+      Toast.show({
+        type: 'error',
+        position: 'bottom',
+        text1: '❌ Listing Failed',
+        text2: error.message || 'Something went wrong. Please try again later.',
+        visibilityTime: 4000,
+        autoHide: true,
+        topOffset: 60,
+        bottomOffset: 40,
+      });
+      
+      console.error('Error listing product:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  try {
-    // Call the API function with the form data
-    setLoading(true);
-    await listProduct(formData);
-
-    // Show success toast
-    Toast.show({
-      type: 'success',
-      position: 'bottom',
-      text1: 'Product Listed!',
-      text2: 'Your product has been listed successfully.',
-      visibilityTime: 4000,
-      autoHide: true,
+  const closeModal = () => {
+    // Animate modal out
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 300,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      })
+    ]).start(() => {
+      onClose();
     });
-  } catch (error) {
-    // Show error toast
-    Toast.show({
-      type: 'error',
-      position: 'bottom',
-      text1: 'Error',
-      text2: 'Something went wrong. Please try again.',
-      visibilityTime: 4000,
-      autoHide: true,
-    });
-  } finally {
-    setLoading(false);
-  }
-
-  // Close the form after submitting
-  onClose();
-};
+  };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.modalContainer}
-      >
-        <View style={styles.modalContent}>
-          <ScrollView keyboardShouldPersistTaps="handled">
-            <Text style={styles.heading}>List Your Product</Text>
-
-            {/* Product Name */}
-            <Text style={styles.label}>Product Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g., Tomatoes"
-              value={productName}
-              onChangeText={setProductName}
-              autoCorrect={false}
-            />
-
-            {/* Category */}
-            <Text style={styles.label}>Category</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={category}
-                onValueChange={(val) => setCategory(val)}
-                style={styles.picker}
-                itemStyle={{ color: "#000", fontSize: 16 }}
-                mode="dropdown"
-              >
-                {categoryOptions.map((cat) => (
-                  <Picker.Item label={cat} value={cat} key={cat} />
-                ))}
-              </Picker>
-            </View>
-
-            {/* Quantity */}
-            <Text style={styles.label}>Quantity Available (kg)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="100"
-              keyboardType="numeric"
-              value={quantity}
-              onChangeText={setQuantity}
-            />
-
-            {/* Price Per Unit */}
-            <Text style={styles.label}>Price Per Unit (₹/kg)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="20"
-              keyboardType="numeric"
-              value={pricePerUnit}
-              onChangeText={setPricePerUnit}
-            />
-
-            {/* Location */}
-            <Text style={styles.label}>Location</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Delivery or pickup location"
-              value={location}
-              onChangeText={setLocation}
-            />
-
-            {/* Delivery Options */}
-            <Text style={styles.label}>Delivery Options</Text>
-            <View style={styles.checkboxRow}>
-              <Checkbox value={deliveryHome} onValueChange={setDeliveryHome} style={styles.checkbox} />
-              <Text style={styles.checkboxLabel}>Home Delivery</Text>
-            </View>
-            <View style={styles.checkboxRow}>
-              <Checkbox value={deliveryPickup} onValueChange={setDeliveryPickup} style={styles.checkbox} />
-              <Text style={styles.checkboxLabel}>Pickup</Text>
-            </View>
-
-            {/* Upload Image */}
-            <Text style={styles.label}>Upload Image</Text>
-            {console.log("Current image state:", image)}
-            {!image ? (
-              <View style={styles.imageUploadContainer}>
-                <View style={styles.uploadPlaceholder}>
-                  <FontAwesome5 name="image" size={48} color="#bbb" />
-                  <Text style={styles.placeholderText}>No image selected</Text>
-                </View>
-                <View style={styles.uploadButtonsRow}>
-                  <TouchableOpacity style={[styles.uploadBtn, styles.choosePhotoBtn]} onPress={pickImage}>
-                    <FontAwesome5 name="images" size={18} color="#fff" />
-                    <Text style={styles.uploadBtnText}>Choose Photo</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={[styles.uploadBtn, styles.takePhotoBtn]} onPress={takePhoto}>
-                    <FontAwesome5 name="camera" size={18} color="#fff" />
-                    <Text style={styles.uploadBtnText}>Take Photo</Text>
-                  </TouchableOpacity>
-                </View>
+    <Modal visible={visible} animationType="none" transparent>
+      <Animated.View style={[styles.modalContainer, { opacity: fadeAnim }]}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.keyboardContainer}
+        >
+          <Animated.View 
+            style={[
+              styles.modalContent, 
+              { transform: [{ translateY: slideAnim }] }
+            ]}
+          >
+            {/* Header */}
+            <View style={styles.headerContainer}>
+              <View style={styles.headerIcon}>
+                <FontAwesome5 name="seedling" size={24} color="#4CAF50" />
               </View>
-            ) : (
-              <View style={styles.imagePreviewContainer}>
-                <View style={styles.imageWrapper}>
-                  <Image 
-                    source={{ uri: image }} 
-                    style={styles.previewImage}
-                    onError={(error) => {
-                      console.log("Image load error:", error);
-                      Alert.alert("Error", "Failed to load image");
-                    }}
-                    onLoad={() => console.log("Image loaded successfully")}
-                  />
-                  <View style={styles.imageOverlay}>
-                    <TouchableOpacity 
-                      style={styles.overlayButton}
-                      onPress={() => setImage(null)}
-                    >
-                      <FontAwesome5 name="times" size={16} color="#fff" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-                <View style={styles.imageActions}>
-                  <TouchableOpacity style={[styles.uploadBtn, styles.changeImageBtn]} onPress={pickImage}>
-                    <FontAwesome5 name="edit" size={16} color="#fff" />
-                    <Text style={styles.uploadBtnText}>Change</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.uploadBtn, styles.removeImageBtn]} 
-                    onPress={() => setImage(null)}
+              <Text style={styles.heading}>List Your Product</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
+                <FontAwesome5 name="times" size={20} color="#666" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView 
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+              style={styles.scrollContent}
+            >
+              {/* Product Name */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <FontAwesome5 name="apple-alt" size={14} color="#4CAF50" /> Product Name
+                </Text>
+                <TextInput
+                  style={[styles.input, productName ? styles.inputFilled : null]}
+                  placeholder="e.g., Fresh Tomatoes"
+                  value={productName}
+                  onChangeText={setProductName}
+                  autoCorrect={false}
+                  placeholderTextColor="#999"
+                />
+              </View>
+
+              {/* Category */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <FontAwesome5 name="list" size={14} color="#4CAF50" /> Category
+                </Text>
+                <View style={styles.pickerWrapper}>
+                  <Picker
+                    selectedValue={category}
+                    onValueChange={(val) => setCategory(val)}
+                    style={styles.picker}
+                    itemStyle={{ color: "#000", fontSize: 16 }}
+                    mode="dropdown"
                   >
-                    <FontAwesome5 name="trash" size={16} color="#fff" />
-                    <Text style={styles.uploadBtnText}>Remove</Text>
+                    {categoryOptions.map((cat) => (
+                      <Picker.Item label={cat} value={cat} key={cat} />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+
+              {/* Quantity and Price Row */}
+              <View style={styles.rowContainer}>
+                <View style={[styles.inputGroup, styles.halfWidth]}>
+                  <Text style={styles.label}>
+                    <FontAwesome5 name="weight" size={14} color="#4CAF50" /> Quantity (kg)
+                  </Text>
+                  <TextInput
+                    style={[styles.input, quantity ? styles.inputFilled : null]}
+                    placeholder="100"
+                    keyboardType="numeric"
+                    value={quantity}
+                    onChangeText={setQuantity}
+                    placeholderTextColor="#999"
+                  />
+                </View>
+
+                <View style={[styles.inputGroup, styles.halfWidth]}>
+                  <Text style={styles.label}>
+                    <FontAwesome5 name="rupee-sign" size={14} color="#4CAF50" /> Price (₹/kg)
+                  </Text>
+                  <TextInput
+                    style={[styles.input, pricePerUnit ? styles.inputFilled : null]}
+                    placeholder="20"
+                    keyboardType="numeric"
+                    value={pricePerUnit}
+                    onChangeText={setPricePerUnit}
+                    placeholderTextColor="#999"
+                  />
+                </View>
+              </View>
+
+              {/* Location */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <FontAwesome5 name="map-marker-alt" size={14} color="#4CAF50" /> Location
+                </Text>
+                <TextInput
+                  style={[styles.input, location ? styles.inputFilled : null]}
+                  placeholder="Enter delivery or pickup location"
+                  value={location}
+                  onChangeText={setLocation}
+                  placeholderTextColor="#999"
+                />
+              </View>
+
+              {/* Delivery Options */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <FontAwesome5 name="truck" size={14} color="#4CAF50" /> Delivery Options
+                </Text>
+                <View style={styles.deliveryContainer}>
+                  <TouchableOpacity 
+                    style={[styles.deliveryOption, deliveryHome && styles.deliveryOptionActive]}
+                    onPress={() => setDeliveryHome(!deliveryHome)}
+                  >
+                    <View style={styles.deliveryOptionContent}>
+                      <FontAwesome5 
+                        name="home" 
+                        size={16} 
+                        color={deliveryHome ? "#fff" : "#4CAF50"} 
+                      />
+                      <Text style={[
+                        styles.deliveryOptionText, 
+                        deliveryHome && styles.deliveryOptionTextActive
+                      ]}>
+                        Home Delivery
+                      </Text>
+                    </View>
+                    <View style={[styles.customCheckbox, deliveryHome && styles.customCheckboxActive]}>
+                      {deliveryHome && <FontAwesome5 name="check" size={12} color="#fff" />}
+                    </View>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    style={[styles.deliveryOption, deliveryPickup && styles.deliveryOptionActive]}
+                    onPress={() => setDeliveryPickup(!deliveryPickup)}
+                  >
+                    <View style={styles.deliveryOptionContent}>
+                      <FontAwesome5 
+                        name="store" 
+                        size={16} 
+                        color={deliveryPickup ? "#fff" : "#4CAF50"} 
+                      />
+                      <Text style={[
+                        styles.deliveryOptionText, 
+                        deliveryPickup && styles.deliveryOptionTextActive
+                      ]}>
+                        Self Pickup
+                      </Text>
+                    </View>
+                    <View style={[styles.customCheckbox, deliveryPickup && styles.customCheckboxActive]}>
+                      {deliveryPickup && <FontAwesome5 name="check" size={12} color="#fff" />}
+                    </View>
                   </TouchableOpacity>
                 </View>
               </View>
-            )}
 
-            {/* Description */}
-            <Text style={styles.label}>Description (optional)</Text>
-            <TextInput
-              style={[styles.input, { height: 80, marginTop: 4 }]}
-              placeholder="Optional details like freshness, organic, etc."
-              multiline
-              value={description}
-              onChangeText={setDescription}
-            />
+              {/* Upload Image */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <FontAwesome5 name="camera" size={14} color="#4CAF50" /> Product Image
+                </Text>
+                {!image ? (
+                  <View style={styles.imageUploadContainer}>
+                    <View style={styles.uploadPlaceholder}>
+                      <View style={styles.uploadIconContainer}>
+                        <FontAwesome5 name="image" size={32} color="#4CAF50" />
+                      </View>
+                      <Text style={styles.placeholderTitle}>Add Product Photo</Text>
+                      <Text style={styles.placeholderSubtitle}>Help buyers see your product</Text>
+                    </View>
+                    <View style={styles.uploadButtonsRow}>
+                      <TouchableOpacity style={styles.choosePhotoBtn} onPress={pickImage}>
+                        <FontAwesome5 name="images" size={16} color="#fff" />
+                        <Text style={styles.uploadBtnText}>Gallery</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.takePhotoBtn} onPress={takePhoto}>
+                        <FontAwesome5 name="camera" size={16} color="#fff" />
+                        <Text style={styles.uploadBtnText}>Camera</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.imagePreviewContainer}>
+                    <View style={styles.imageWrapper}>
+                      <Image 
+                        source={{ uri: image }} 
+                        style={styles.previewImage}
+                        onError={(error) => {
+                          console.log("Image load error:", error);
+                          Alert.alert("Error", "Failed to load image");
+                        }}
+                        onLoad={() => console.log("Image loaded successfully")}
+                      />
+                      <TouchableOpacity 
+                        style={styles.removeImageOverlay}
+                        onPress={() => setImage(null)}
+                      >
+                        <FontAwesome5 name="times" size={14} color="#fff" />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.imageActions}>
+                      <TouchableOpacity style={styles.changeImageBtn} onPress={pickImage}>
+                        <FontAwesome5 name="edit" size={14} color="#fff" />
+                        <Text style={styles.imageActionText}>Change</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={styles.removeImageBtn} 
+                        onPress={() => setImage(null)}
+                      >
+                        <FontAwesome5 name="trash" size={14} color="#fff" />
+                        <Text style={styles.imageActionText}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
 
-            {/* Buttons */}
-            <View style={styles.buttonRow}>
-              <TouchableOpacity style={[styles.btn, styles.cancelBtn]} onPress={onClose}>
+              {/* Description */}
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>
+                  <FontAwesome5 name="align-left" size={14} color="#4CAF50" /> Description (Optional)
+                </Text>
+                <TextInput
+                  style={[styles.textArea, description ? styles.inputFilled : null]}
+                  placeholder="Tell buyers about freshness, organic certification, special qualities..."
+                  multiline
+                  numberOfLines={4}
+                  value={description}
+                  onChangeText={setDescription}
+                  placeholderTextColor="#999"
+                  textAlignVertical="top"
+                />
+              </View>
+            </ScrollView>
+
+            {/* Action Buttons */}
+            <View style={styles.actionContainer}>
+              <TouchableOpacity 
+                style={styles.cancelBtn} 
+                onPress={closeModal}
+                disabled={isSubmitting}
+              >
                 <Text style={styles.cancelText}>Cancel</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.btn, styles.submitBtn]} onPress={handleSubmit}>
-                <Text style={styles.submitText}>Submit</Text>
+              <TouchableOpacity 
+                style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]} 
+                onPress={handleSubmit}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <FontAwesome5 name="spinner" size={16} color="#fff" />
+                    <Text style={styles.submitText}>Listing...</Text>
+                  </>
+                ) : (
+                  <>
+                    <FontAwesome5 name="check" size={16} color="#fff" />
+                    <Text style={styles.submitText}>List Product</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </Animated.View>
     </Modal>
   );
 }
@@ -318,200 +507,256 @@ export default function CropForm({ visible, onClose, onSubmit }) {
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
-    backgroundColor: "#00000090",
-    justifyContent: "center",
-    padding: 16,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "flex-end",
+  },
+  keyboardContainer: {
+    flex: 1,
+    justifyContent: "flex-end",
   },
   modalContent: {
     backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    maxHeight: "90%",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: "95%",
+    elevation: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+  },
+  headerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+    position: "relative",
+  },
+  headerIcon: {
+    position: "absolute",
+    left: 24,
   },
   heading: {
     fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 16,
+    fontWeight: "700",
+    color: "#2c3e50",
     textAlign: "center",
   },
+  closeButton: {
+    position: "absolute",
+    right: 24,
+    padding: 4,
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 16,
+  },
+  inputGroup: {
+    marginBottom: 20,
+  },
   label: {
-    marginTop: 12,
-    marginBottom: 6,
+    fontSize: 16,
     fontWeight: "600",
-    color: "#333",
+    color: "#2c3e50",
+    marginBottom: 8,
+    flexDirection: "row",
+    alignItems: "center",
   },
   input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: Platform.OS === "ios" ? 14 : 8,
+    borderWidth: 2,
+    borderColor: "#e8f5e8",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === "ios" ? 16 : 12,
     fontSize: 16,
-    backgroundColor: "#fafafa",
+    backgroundColor: "#fafffe",
+    color: "#2c3e50",
+    transition: "all 0.2s ease",
+  },
+  inputFilled: {
+    borderColor: "#4CAF50",
+    backgroundColor: "#f8fff8",
+  },
+  textArea: {
+    borderWidth: 2,
+    borderColor: "#e8f5e8",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    backgroundColor: "#fafffe",
+    color: "#2c3e50",
+    minHeight: 100,
   },
   pickerWrapper: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    backgroundColor: "#fafafa",
-    marginBottom: 8,
-    overflow: 'hidden', // Ensures content stays within borders
+    borderWidth: 2,
+    borderColor: "#e8f5e8",
+    borderRadius: 12,
+    backgroundColor: "#fafffe",
+    overflow: 'hidden',
   },
   picker: {
     height: Platform.OS === "ios" ? 180 : 50,
     width: "100%",
-    color: "#000",
+    color: "#2c3e50",
     backgroundColor: "transparent",
   },
-  unitPicker: {
-    height: Platform.OS === "ios" ? 180 : 50,
-    width: "100%",
-    color: "#000",
-    backgroundColor: "transparent",
-    // Specific fixes for unit picker visibility
-    ...(Platform.OS === "android" && {
-      marginTop: -8,
-      marginBottom: -8,
-    }),
-  },
-  row: {
+  rowContainer: {
     flexDirection: "row",
-    alignItems: "center",
-  },
-  checkboxRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 6,
-  },
-  checkbox: {
-    marginRight: 8,
-  },
-  checkboxLabel: {
-    fontSize: 16,
-    color: "#444",
-  },
-  uploadBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    gap: 8,
-  },
-  uploadBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  buttonRow: {
-    flexDirection: "row",
-    marginTop: 24,
     justifyContent: "space-between",
+    gap: 16,
   },
-  btn: {
+  halfWidth: {
     flex: 1,
-    borderRadius: 8,
-    paddingVertical: 12,
+  },
+  deliveryContainer: {
+    gap: 12,
+  },
+  deliveryOption: {
+    flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    padding: 16,
+    borderWidth: 2,
+    borderColor: "#e8f5e8",
+    borderRadius: 12,
+    backgroundColor: "#fafffe",
   },
-  cancelBtn: {
-    backgroundColor: "#ccc",
-    marginRight: 12,
-  },
-  cancelText: {
-    color: "#333",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  submitBtn: {
+  deliveryOptionActive: {
+    borderColor: "#4CAF50",
     backgroundColor: "#4CAF50",
   },
-  submitText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  placeholderIcon: {
-    width: 70,
-    height: 70,
-    borderRadius: 8,
-    backgroundColor: "#ddd",
-    justifyContent: "center",
+  deliveryOptionContent: {
+    flexDirection: "row",
     alignItems: "center",
-    marginRight: 10,
+    gap: 12,
+  },
+  deliveryOptionText: {
+    fontSize: 16,
+    fontWeight: "500",
+    color: "#2c3e50",
+  },
+  deliveryOptionTextActive: {
+    color: "#fff",
+  },
+  customCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#4CAF50",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "transparent",
+  },
+  customCheckboxActive: {
+    backgroundColor: "#fff",
+    borderColor: "#fff",
   },
   imageUploadContainer: {
     alignItems: "center",
-    marginVertical: 16,
-    backgroundColor: "#f8f9fa",
+    padding: 32,
+    backgroundColor: "#f8fff8",
     borderRadius: 16,
-    padding: 24,
     borderWidth: 2,
-    borderColor: "#e9ecef",
+    borderColor: "#e8f5e8",
     borderStyle: "dashed",
   },
   uploadPlaceholder: {
     alignItems: "center",
-    marginBottom: 20,
-    paddingVertical: 20,
+    marginBottom: 24,
   },
-  placeholderText: {
-    marginTop: 8,
-    fontSize: 16,
-    color: "#6c757d",
-    fontWeight: "500",
+  uploadIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#e8f5e8",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 16,
+  },
+  placeholderTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#2c3e50",
+    marginBottom: 4,
+  },
+  placeholderSubtitle: {
+    fontSize: 14,
+    color: "#666",
   },
   uploadButtonsRow: {
     flexDirection: "row",
-    gap: 12,
-    width: "100%",
-    justifyContent: "center",
+    gap: 16,
   },
   choosePhotoBtn: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#007AFF",
-    flex: 1,
-    maxWidth: 140,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    elevation: 3,
+    shadowColor: "#007AFF",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
   },
   takePhotoBtn: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#FF6B35",
-    flex: 1,
-    maxWidth: 140,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    gap: 8,
+    elevation: 3,
+    shadowColor: "#FF6B35",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  uploadBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
   },
   imagePreviewContainer: {
     alignItems: "center",
-    marginVertical: 16,
+    padding: 16,
+    backgroundColor: "#f8fff8",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#e8f5e8",
   },
   imageWrapper: {
     position: "relative",
     marginBottom: 16,
   },
   previewImage: {
-    width: 200,
-    height: 200,
+    width: 180,
+    height: 180,
     borderRadius: 16,
     resizeMode: "cover",
-    elevation: 4,
+    elevation: 8,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
   },
-  imageOverlay: {
+  removeImageOverlay: {
     position: "absolute",
     top: 8,
     right: 8,
-  },
-  overlayButton: {
-    backgroundColor: "rgba(0,0,0,0.6)",
-    borderRadius: 20,
-    width: 32,
-    height: 32,
+    backgroundColor: "rgba(220, 53, 69, 0.9)",
+    borderRadius: 16,
+    width: 28,
+    height: 28,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -520,13 +765,75 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   changeImageBtn: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#28a745",
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
   },
   removeImageBtn: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#dc3545",
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  imageActionText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  actionContainer: {
+    flexDirection: "row",
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    paddingBottom: Platform.OS === "ios" ? 34 : 20,
+    backgroundColor: "#fff",
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0",
+    gap: 16,
+  },
+  cancelBtn: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: "#f8f9fa",
+    borderWidth: 1,
+    borderColor: "#dee2e6",
+  },
+  cancelText: {
+    color: "#6c757d",
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  submitBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
+    borderRadius: 12,
+    backgroundColor: "#4CAF50",
+    gap: 8,
+    elevation: 4,
+    shadowColor: "#4CAF50",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  submitBtnDisabled: {
+    backgroundColor: "#95d5b2",
+    elevation: 2,
+  },
+  submitText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
   },
 });

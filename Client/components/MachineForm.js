@@ -11,40 +11,119 @@ import {
   Platform,
   Alert,
   Image,
+  Animated,
+  Dimensions,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import Checkbox from "expo-checkbox";
 import * as ImagePicker from "expo-image-picker";
 import { FontAwesome5 } from "@expo/vector-icons";
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const categoryOptions = ["Tractor", "Tiller", "Harvester"];
+const { width: screenWidth } = Dimensions.get('window');
+
+// Toast Component
+const Toast = ({ visible, message, onHide }) => {
+  const slideAnim = useState(new Animated.Value(-300))[0];
+
+  useEffect(() => {
+    if (visible) {
+      Animated.sequence([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.delay(3000),
+        Animated.timing(slideAnim, {
+          toValue: -300,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        onHide();
+      });
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View
+      style={[
+        styles.toastContainer,
+        {
+          transform: [{ translateY: slideAnim }],
+        },
+      ]}
+    >
+      <View style={styles.toast}>
+        <FontAwesome5 name="check-circle" size={20} color="#4CAF50" />
+        <Text style={styles.toastText}>{message}</Text>
+      </View>
+    </Animated.View>
+  );
+};
 
 export default function MachineForm({ visible, onClose, onSubmit }) {
   const [toolName, setToolName] = useState("");
   const [category, setCategory] = useState("Tractor");
   const [rentalPrice, setRentalPrice] = useState("");
-  const [availabilityFrom, setAvailabilityFrom] = useState("");
-  const [availabilityTo, setAvailabilityTo] = useState("");
+  const [availabilityFrom, setAvailabilityFrom] = useState(new Date());
+  const [availabilityTo, setAvailabilityTo] = useState(new Date());
   const [location, setLocation] = useState("");
   const [pickup, setPickup] = useState(false);
   const [delivery, setDelivery] = useState(false);
   const [description, setDescription] = useState("");
   const [image, setImage] = useState(null);
+  const [showToast, setShowToast] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showFromDatePicker, setShowFromDatePicker] = useState(false);
+  const [showToDatePicker, setShowToDatePicker] = useState(false);
 
   useEffect(() => {
     if (!visible) {
       setToolName("");
       setCategory("Tractor");
       setRentalPrice("");
-      setAvailabilityFrom("");
-      setAvailabilityTo("");
+      setAvailabilityFrom(new Date());
+      setAvailabilityTo(new Date());
       setLocation("");
       setPickup(false);
       setDelivery(false);
       setDescription("");
       setImage(null);
+      setIsSubmitting(false);
     }
   }, [visible]);
+
+  const formatDate = (date) => {
+    return date.toISOString().split('T')[0];
+  };
+
+  const handleFromDateChange = (event, selectedDate) => {
+    setShowFromDatePicker(false);
+    if (selectedDate) {
+      setAvailabilityFrom(selectedDate);
+      // Ensure 'to' date is not before 'from' date
+      if (selectedDate > availabilityTo) {
+        setAvailabilityTo(selectedDate);
+      }
+    }
+  };
+
+  const handleToDateChange = (event, selectedDate) => {
+    setShowToDatePicker(false);
+    if (selectedDate) {
+      // Ensure 'to' date is not before 'from' date
+      if (selectedDate >= availabilityFrom) {
+        setAvailabilityTo(selectedDate);
+      } else {
+        Alert.alert("Invalid Date", "End date cannot be before start date");
+      }
+    }
+  };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -81,7 +160,7 @@ export default function MachineForm({ visible, onClose, onSubmit }) {
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!toolName.trim()) {
       Alert.alert("Validation", "Please enter tool name");
       return;
@@ -90,12 +169,12 @@ export default function MachineForm({ visible, onClose, onSubmit }) {
       Alert.alert("Validation", "Enter valid rental price");
       return;
     }
-    if (!availabilityFrom.trim()) {
-      Alert.alert("Validation", "Please enter availability start date");
+    if (!availabilityFrom) {
+      Alert.alert("Validation", "Please select availability start date");
       return;
     }
-    if (!availabilityTo.trim()) {
-      Alert.alert("Validation", "Please enter availability end date");
+    if (!availabilityTo) {
+      Alert.alert("Validation", "Please select availability end date");
       return;
     }
     if (!location.trim()) {
@@ -110,13 +189,15 @@ export default function MachineForm({ visible, onClose, onSubmit }) {
       return;
     }
 
+    setIsSubmitting(true);
+
     const formData = {
       toolName,
       category,
       rentalPrice,
-      duration: "hour", // Fixed to hour as requested
-      availabilityFrom,
-      availabilityTo,
+      duration: "hour",
+      availabilityFrom: formatDate(availabilityFrom),
+      availabilityTo: formatDate(availabilityTo),
       location,
       pickup,
       delivery,
@@ -124,8 +205,19 @@ export default function MachineForm({ visible, onClose, onSubmit }) {
       imageUri: image,
     };
 
-    onSubmit(formData);
-    onClose();
+    try {
+      await onSubmit(formData);
+      setShowToast(true);
+      
+      // Close modal after a short delay to show the toast
+      setTimeout(() => {
+        onClose();
+      }, 500);
+    } catch (error) {
+      Alert.alert("Error", "Failed to submit form. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const removeImage = () => {
@@ -133,154 +225,297 @@ export default function MachineForm({ visible, onClose, onSubmit }) {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.modalContainer}
-      >
-        <View style={styles.modalContent}>
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-            <Text style={styles.heading}>List Your Machine</Text>
-
-            {/* Tool Name */}
-            <Text style={styles.label}>Tool Name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder='e.g., "Power Tiller"'
-              value={toolName}
-              onChangeText={setToolName}
-              autoCorrect={false}
-            />
-
-            {/* Category */}
-            <Text style={styles.label}>Category</Text>
-            <View style={styles.pickerWrapper}>
-              <Picker
-                selectedValue={category}
-                onValueChange={setCategory}
-                style={styles.picker}
-                mode="dropdown"
-                itemStyle={styles.pickerItem}
-              >
-                {categoryOptions.map((cat) => (
-                  <Picker.Item label={cat} value={cat} key={cat} />
-                ))}
-              </Picker>
-            </View>
-
-            {/* Rental Price - Removed duration picker, fixed to hour */}
-            <Text style={styles.label}>Rental Price (per hour)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="₹500"
-              keyboardType="numeric"
-              value={rentalPrice}
-              onChangeText={setRentalPrice}
-            />
-
-            {/* Availability From */}
-            <Text style={styles.label}>Availability From</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
-              value={availabilityFrom}
-              onChangeText={setAvailabilityFrom}
-            />
-
-            {/* Availability To */}
-            <Text style={styles.label}>Availability To</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="YYYY-MM-DD"
-              value={availabilityTo}
-              onChangeText={setAvailabilityTo}
-            />
-
-            {/* Location */}
-            <Text style={styles.label}>Location</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Where the tool is available"
-              value={location}
-              onChangeText={setLocation}
-            />
-
-            {/* Pickup/Delivery Options */}
-            <Text style={styles.label}>Pickup/Delivery Options</Text>
-            <View style={styles.checkboxRow}>
-              <Checkbox value={pickup} onValueChange={setPickup} style={styles.checkbox} />
-              <Text style={styles.checkboxLabel}>Pickup</Text>
-            </View>
-            <View style={styles.checkboxRow}>
-              <Checkbox value={delivery} onValueChange={setDelivery} style={styles.checkbox} />
-              <Text style={styles.checkboxLabel}>Delivery</Text>
-            </View>
-
-            {/* Upload Image - Improved Design */}
-            <Text style={styles.label}>Upload Images</Text>
-            {image ? (
-              <View style={styles.imageContainer}>
-                <Image source={{ uri: image }} style={styles.selectedImage} />
-                <TouchableOpacity style={styles.removeImageBtn} onPress={removeImage}>
-                  <FontAwesome5 name="times" size={16} color="#fff" />
-                </TouchableOpacity>
+    <>
+      <Toast
+        visible={showToast}
+        message="Machine listed successfully!"
+        onHide={() => setShowToast(false)}
+      />
+      
+      <Modal visible={visible} animationType="slide" transparent>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalContainer}
+        >
+          <View style={styles.modalContent}>
+            <ScrollView 
+              keyboardShouldPersistTaps="handled" 
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+            >
+              {/* Header with improved design */}
+              <View style={styles.header}>
+                <View style={styles.headerIcon}>
+                  <FontAwesome5 name="tractor" size={24} color="#4CAF50" />
+                </View>
+                <Text style={styles.heading}>List Your Machine</Text>
+                <Text style={styles.subheading}>Share your agricultural equipment with others</Text>
               </View>
-            ) : (
-              <View style={styles.placeholderContainer}>
-                <View style={styles.placeholderIcon}>
-                  <FontAwesome5 name="tools" size={32} color="#888" />
-                  <Text style={styles.placeholderText}>No image selected</Text>
+
+              {/* Tool Name */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>
+                  Tool Name <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder='e.g., "Power Tiller"'
+                  value={toolName}
+                  onChangeText={setToolName}
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* Category */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>
+                  Category <Text style={styles.required}>*</Text>
+                </Text>
+                <View style={styles.pickerWrapper}>
+                  <Picker
+                    selectedValue={category}
+                    onValueChange={setCategory}
+                    style={styles.picker}
+                    mode="dropdown"
+                    itemStyle={styles.pickerItem}
+                  >
+                    {categoryOptions.map((cat) => (
+                      <Picker.Item label={cat} value={cat} key={cat} />
+                    ))}
+                  </Picker>
                 </View>
               </View>
-            )}
 
-            {/* Improved Photo Buttons */}
-            <View style={styles.photoButtonsContainer}>
-              <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
-                <FontAwesome5 name="image" size={18} color="#4CAF50" style={styles.buttonIcon} />
-                <Text style={styles.photoButtonText}>Choose Photo</Text>
-              </TouchableOpacity>
+              {/* Rental Price */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>
+                  Rental Price (per hour) <Text style={styles.required}>*</Text>
+                </Text>
+                <View style={styles.priceInputContainer}>
+                  <Text style={styles.currencySymbol}>₹</Text>
+                  <TextInput
+                    style={styles.priceInput}
+                    placeholder="500"
+                    keyboardType="numeric"
+                    value={rentalPrice}
+                    onChangeText={setRentalPrice}
+                  />
+                </View>
+              </View>
+
+              {/* Availability Dates */}
+              <View style={styles.dateRow}>
+                <View style={[styles.inputContainer, styles.dateInput]}>
+                  <Text style={styles.label}>
+                    Available From <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.dateInputButton}
+                    onPress={() => setShowFromDatePicker(true)}
+                  >
+                    <FontAwesome5 name="calendar-alt" size={16} color="#4CAF50" />
+                    <Text style={styles.dateInputText}>
+                      {formatDate(availabilityFrom)}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={[styles.inputContainer, styles.dateInput]}>
+                  <Text style={styles.label}>
+                    Available To <Text style={styles.required}>*</Text>
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.dateInputButton}
+                    onPress={() => setShowToDatePicker(true)}
+                  >
+                    <FontAwesome5 name="calendar-alt" size={16} color="#4CAF50" />
+                    <Text style={styles.dateInputText}>
+                      {formatDate(availabilityTo)}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Date Pickers */}
+              {showFromDatePicker && (
+                <DateTimePicker
+                  value={availabilityFrom}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleFromDateChange}
+                  minimumDate={new Date()}
+                />
+              )}
               
-              <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
-                <FontAwesome5 name="camera" size={18} color="#4CAF50" style={styles.buttonIcon} />
-                <Text style={styles.photoButtonText}>Take Photo</Text>
-              </TouchableOpacity>
-            </View>
+              {showToDatePicker && (
+                <DateTimePicker
+                  value={availabilityTo}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleToDateChange}
+                  minimumDate={availabilityFrom}
+                />
+              )}
 
-            {/* Rental Terms */}
-            <Text style={styles.label}>Rental Terms</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Deposit, late fee, etc."
-              multiline
-              value={description}
-              onChangeText={setDescription}
-              textAlignVertical="top"
-            />
+              {/* Location */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>
+                  Location <Text style={styles.required}>*</Text>
+                </Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Where the tool is available"
+                  value={location}
+                  onChangeText={setLocation}
+                />
+              </View>
 
-            {/* Buttons */}
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={[styles.btn, styles.cancelBtn]}
-                onPress={onClose}
-              >
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.btn, styles.submitBtn]}
-                onPress={handleSubmit}
-              >
-                <Text style={styles.submitText}>Submit</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+              {/* Pickup/Delivery Options */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>
+                  Pickup/Delivery Options <Text style={styles.required}>*</Text>
+                </Text>
+                <View style={styles.checkboxContainer}>
+                  <TouchableOpacity 
+                    style={[styles.checkboxCard, pickup && styles.checkboxCardActive]} 
+                    onPress={() => setPickup(!pickup)}
+                  >
+                    <Checkbox value={pickup} onValueChange={setPickup} style={styles.checkbox} />
+                    <View style={styles.checkboxContent}>
+                      <FontAwesome5 name="hand-paper" size={16} color={pickup ? "#4CAF50" : "#888"} />
+                      <Text style={[styles.checkboxLabel, pickup && styles.checkboxLabelActive]}>
+                        Pickup Available
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={[styles.checkboxCard, delivery && styles.checkboxCardActive]} 
+                    onPress={() => setDelivery(!delivery)}
+                  >
+                    <Checkbox value={delivery} onValueChange={setDelivery} style={styles.checkbox} />
+                    <View style={styles.checkboxContent}>
+                      <FontAwesome5 name="truck" size={16} color={delivery ? "#4CAF50" : "#888"} />
+                      <Text style={[styles.checkboxLabel, delivery && styles.checkboxLabelActive]}>
+                        Delivery Available
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Upload Image */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Upload Images</Text>
+                {image ? (
+                  <View style={styles.imageContainer}>
+                    <Image source={{ uri: image }} style={styles.selectedImage} />
+                    <TouchableOpacity style={styles.removeImageBtn} onPress={removeImage}>
+                      <FontAwesome5 name="times" size={16} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={styles.placeholderContainer}>
+                    <View style={styles.placeholderIcon}>
+                      <FontAwesome5 name="tools" size={32} color="#888" />
+                      <Text style={styles.placeholderText}>No image selected</Text>
+                    </View>
+                  </View>
+                )}
+
+                <View style={styles.photoButtonsContainer}>
+                  <TouchableOpacity style={styles.photoButton} onPress={pickImage}>
+                    <FontAwesome5 name="image" size={18} color="#4CAF50" style={styles.buttonIcon} />
+                    <Text style={styles.photoButtonText}>Choose Photo</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={styles.photoButton} onPress={takePhoto}>
+                    <FontAwesome5 name="camera" size={18} color="#4CAF50" style={styles.buttonIcon} />
+                    <Text style={styles.photoButtonText}>Take Photo</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Rental Terms */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Rental Terms</Text>
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  placeholder="Deposit, late fee, maintenance requirements, etc."
+                  multiline
+                  value={description}
+                  onChangeText={setDescription}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              {/* Buttons */}
+              <View style={styles.buttonRow}>
+                <TouchableOpacity
+                  style={[styles.btn, styles.cancelBtn]}
+                  onPress={onClose}
+                  disabled={isSubmitting}
+                >
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.btn, styles.submitBtn, isSubmitting && styles.submitBtnDisabled]}
+                  onPress={handleSubmit}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <View style={styles.loadingContainer}>
+                      <Text style={styles.submitText}>Submitting...</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <FontAwesome5 name="check" size={16} color="#fff" style={styles.buttonIcon} />
+                      <Text style={styles.submitText}>List Machine</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  // Toast Styles
+  toastContainer: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    zIndex: 9999,
+  },
+  toast: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#4CAF50',
+    minWidth: 200,
+  },
+  toastText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    flex: 1,
+  },
+
+  // Modal Styles
   modalContainer: {
     flex: 1,
     backgroundColor: "#00000080",
@@ -289,8 +524,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     backgroundColor: "#fff",
-    borderRadius: 16,
-    padding: 20,
+    borderRadius: 20,
     maxHeight: "90%",
     elevation: 10,
     shadowColor: "#000",
@@ -298,71 +532,176 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
+  scrollContent: {
+    padding: 24,
+  },
+
+  // Header Styles
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  headerIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#E8F5E8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   heading: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
     color: "#2E7D32",
+    marginBottom: 8,
+  },
+  subheading: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: 'center',
+  },
+
+  // Input Styles
+  inputContainer: {
+    marginBottom: 20,
   },
   label: {
-    marginTop: 16,
     marginBottom: 8,
     fontWeight: "600",
     color: "#333",
     fontSize: 16,
   },
+  required: {
+    color: '#f44336',
+  },
   input: {
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: Platform.OS === "ios" ? 16 : 12,
+    borderColor: "#E0E0E0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === "ios" ? 16 : 14,
     fontSize: 16,
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#FAFAFA",
+    color: "#333",
   },
   textArea: {
-    height: 80,
-    paddingTop: 12,
+    height: 100,
+    paddingTop: 16,
   },
+
+  // Price Input Styles
+  priceInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 12,
+    backgroundColor: "#FAFAFA",
+    paddingLeft: 16,
+  },
+  currencySymbol: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#4CAF50',
+    marginRight: 8,
+  },
+  priceInput: {
+    flex: 1,
+    paddingVertical: Platform.OS === "ios" ? 16 : 14,
+    paddingRight: 16,
+    fontSize: 16,
+    color: "#333",
+  },
+
+  // Date Input Styles
+  dateRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  dateInput: {
+    flex: 1,
+  },
+  dateInputButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === "ios" ? 16 : 14,
+    backgroundColor: "#FAFAFA",
+  },
+  dateInputText: {
+    fontSize: 16,
+    color: "#333",
+    marginLeft: 12,
+    flex: 1,
+  },
+
+  // Picker Styles
   pickerWrapper: {
     borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 10,
+    borderColor: "#E0E0E0",
+    borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#f9f9f9",
+    backgroundColor: "#FAFAFA",
   },
   picker: {
     height: Platform.OS === "ios" ? 200 : 50,
-    color: "#222",
+    color: "#333",
   },
   pickerItem: {
     fontSize: 16,
-    color: "#222",
+    color: "#333",
   },
-  checkboxRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 8,
-    marginBottom: 4,
+
+  // Checkbox Styles
+  checkboxContainer: {
+    gap: 12,
+  },
+  checkboxCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    backgroundColor: '#FAFAFA',
+  },
+  checkboxCardActive: {
+    borderColor: '#4CAF50',
+    backgroundColor: '#E8F5E8',
   },
   checkbox: {
     marginRight: 12,
     borderRadius: 4,
   },
+  checkboxContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   checkboxLabel: {
     fontSize: 16,
-    color: "#444",
+    color: "#666",
+    marginLeft: 8,
   },
+  checkboxLabelActive: {
+    color: "#2E7D32",
+    fontWeight: '600',
+  },
+
+  // Image Styles
   imageContainer: {
     position: "relative",
     alignSelf: "flex-start",
     marginVertical: 12,
   },
   selectedImage: {
-    width: 120,
-    height: 120,
-    borderRadius: 12,
+    width: 140,
+    height: 140,
+    borderRadius: 16,
     backgroundColor: "#f0f0f0",
   },
   removeImageBtn: {
@@ -370,12 +709,12 @@ const styles = StyleSheet.create({
     top: -8,
     right: -8,
     backgroundColor: "#f44336",
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+    borderRadius: 16,
+    width: 32,
+    height: 32,
     justifyContent: "center",
     alignItems: "center",
-    elevation: 2,
+    elevation: 4,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
@@ -385,12 +724,12 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   placeholderIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: 12,
-    backgroundColor: "#f0f0f0",
+    width: 140,
+    height: 140,
+    borderRadius: 16,
+    backgroundColor: "#FAFAFA",
     borderWidth: 2,
-    borderColor: "#ddd",
+    borderColor: "#E0E0E0",
     borderStyle: "dashed",
     justifyContent: "center",
     alignItems: "center",
@@ -401,10 +740,11 @@ const styles = StyleSheet.create({
     color: "#888",
     textAlign: "center",
   },
+
+  // Photo Button Styles
   photoButtonsContainer: {
     flexDirection: "row",
-    marginTop: 12,
-    marginBottom: 8,
+    marginTop: 16,
     gap: 12,
   },
   photoButton: {
@@ -415,8 +755,8 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderWidth: 2,
     borderColor: "#4CAF50",
-    borderRadius: 10,
-    paddingVertical: 12,
+    borderRadius: 12,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     elevation: 2,
     shadowColor: "#000",
@@ -432,26 +772,30 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+
+  // Action Button Styles
   buttonRow: {
     flexDirection: "row",
-    marginTop: 28,
-    gap: 12,
+    marginTop: 32,
+    gap: 16,
   },
   btn: {
     flex: 1,
-    borderRadius: 10,
-    paddingVertical: 14,
+    borderRadius: 12,
+    paddingVertical: 16,
     alignItems: "center",
+    justifyContent: "center",
     elevation: 2,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    flexDirection: 'row',
   },
   cancelBtn: {
     backgroundColor: "#f5f5f5",
     borderWidth: 1,
-    borderColor: "#ddd",
+    borderColor: "#E0E0E0",
   },
   cancelText: {
     color: "#666",
@@ -461,9 +805,16 @@ const styles = StyleSheet.create({
   submitBtn: {
     backgroundColor: "#4CAF50",
   },
+  submitBtnDisabled: {
+    backgroundColor: "#A5D6A7",
+  },
   submitText: {
     color: "#fff",
     fontWeight: "600",
     fontSize: 16,
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });
