@@ -1,0 +1,48 @@
+{
+  "Maize": [
+    { "week": 1, "stage": "Germination" },
+    { "week": 2, "stage": "Early Vegetative" },
+    { "week": 3, "stage": "Vegetative Growth" },
+    { "week": 4, "stage": "Flowering" },
+    { "week": 5, "stage": "Grain Filling" },
+    { "week": 6, "stage": "Harvest Maturity" }
+  ],
+  "Rice": [
+    { "week": 1, "stage": "Germination" },
+    { "week": 2, "stage": "Seedling" },
+    { "week": 3, "stage": "Tillering" },
+    { "week": 4, "stage": "Stem Elongation" },
+    { "week": 5, "stage": "Panicle Initiation" },
+    { "week": 6, "stage": "Flowering" },
+    { "week": 7, "stage": "Grain Filling" },
+    { "week": 8, "stage": "Maturity" }
+  ],
+  "Wheat": [
+    { "week": 1, "stage": "Germination" },
+    { "week": 2, "stage": "Seedling" },
+    { "week": 3, "stage": "Tillering" },
+    { "week": 4, "stage": "Stem Extension" },
+    { "week": 5, "stage": "Booting" },
+    { "week": 6, "stage": "Heading" },
+    { "week": 7, "stage": "Flowering" },
+    { "week": 8, "stage": "Grain Filling" },
+    { "week": 9, "stage": "Maturity" }
+  ],
+  "Potato": [
+    { "week": 1, "stage": "Sprouting" },
+    { "week": 2, "stage": "Vegetative Growth" },
+    { "week": 3, "stage": "Tuber Initiation" },
+    { "week": 4, "stage": "Tuber Growth" },
+    { "week": 5, "stage": "Tuber Bulking" },
+    { "week": 6, "stage": "Maturation" },
+    { "week": 7, "stage": "Senescence" }
+  ],
+  "Onion": [
+    { "week": 1, "stage": "Germination" },
+    { "week": 2, "stage": "Leaf Development" },
+    { "week": 3, "stage": "Bulb Formation" },
+    { "week": 4, "stage": "Bulb Swelling" },
+    { "week": 5, "stage": "Maturation" },
+    { "week": 6, "stage": "Curing" }
+  ]
+}

@@ -1,16 +1,31 @@
-// app/_layout.tsx
+import React from 'react';
 import { Slot } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Provider } from 'react-redux';
+import { store } from '../store/store'; // Import the Redux store
+import LocationFetcher from '../components/LocationFetcher'; // Import the LocationFetcher component
+import { AuthProvider } from '../context/AuthContext'; // adjust path if needed
+import Toast from 'react-native-toast-message'; // Import Toast
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
-        <Slot />
-        <StatusBar style="dark" />
-      </View>
-    </SafeAreaProvider>
+    <AuthProvider>
+      <Provider store={store}>
+        <SafeAreaProvider>
+          <View style={{ flex: 1, backgroundColor: '#ffffff' }}>
+            {/* Fetch location data when the app starts */}
+            <LocationFetcher />
+            {/* Render the current route */}
+            <Slot />
+            <StatusBar style="dark" />
+
+            {/* Toast container for global access */}
+            <Toast />
+          </View>
+        </SafeAreaProvider>
+      </Provider>
+    </AuthProvider>
   );
 }

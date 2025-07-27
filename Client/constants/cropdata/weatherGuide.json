@@ -1,0 +1,228 @@
+{
+  "Maize": {
+    "Germination": {
+      "temp": [20, 30],
+      "rainfall": [10, 20],
+      "humidity": [50, 70],
+      "tips": "Maintain soil moisture. Protect from birds and pests."
+    },
+    "Early Vegetative": {
+      "temp": [22, 32],
+      "rainfall": [8, 15],
+      "humidity": [45, 65],
+      "tips": "Apply nitrogen fertilizer. Control weeds."
+    },
+    "Vegetative Growth": {
+      "temp": [25, 35],
+      "rainfall": [5, 15],
+      "humidity": [40, 70],
+      "tips": "Ensure adequate spacing. Watch for leaf diseases."
+    },
+    "Flowering": {
+      "temp": [25, 30],
+      "rainfall": [0, 10],
+      "humidity": [50, 65],
+      "tips": "Critical pollination period. Avoid water stress."
+    },
+    "Grain Filling": {
+      "temp": [20, 28],
+      "rainfall": [0, 5],
+      "humidity": [40, 60],
+      "tips": "Reduce nitrogen. Protect from birds and insects."
+    },
+    "Harvest Maturity": {
+      "temp": [18, 25],
+      "rainfall": [0, 2],
+      "humidity": [30, 50],
+      "tips": "Harvest when kernels are hard. Dry properly before storage."
+    }
+  },
+  "Rice": {
+    "Germination": {
+      "temp": [25, 35],
+      "rainfall": [15, 25],
+      "humidity": [70, 90],
+      "tips": "Soak seeds before planting. Maintain flooded conditions."
+    },
+    "Seedling": {
+      "temp": [25, 30],
+      "rainfall": [10, 20],
+      "humidity": [65, 85],
+      "tips": "Transplant when 15-20 days old. Keep 2-3 cm water depth."
+    },
+    "Tillering": {
+      "temp": [25, 30],
+      "rainfall": [10, 20],
+      "humidity": [60, 80],
+      "tips": "Apply phosphorus fertilizer. Maintain consistent water level."
+    },
+    "Stem Elongation": {
+      "temp": [25, 30],
+      "rainfall": [5, 15],
+      "humidity": [60, 75],
+      "tips": "Support stem growth with potassium. Watch for lodging."
+    },
+    "Panicle Initiation": {
+      "temp": [25, 30],
+      "rainfall": [5, 10],
+      "humidity": [60, 70],
+      "tips": "Critical growth stage. Avoid drought stress."
+    },
+    "Flowering": {
+      "temp": [25, 30],
+      "rainfall": [5, 15],
+      "humidity": [70, 85],
+      "tips": "Maintain water level. Protect from strong winds."
+    },
+    "Grain Filling": {
+      "temp": [20, 28],
+      "rainfall": [5, 10],
+      "humidity": [60, 75],
+      "tips": "Gradually reduce water. Watch for fungal diseases."
+    },
+    "Maturity": {
+      "temp": [18, 25],
+      "rainfall": [0, 5],
+      "humidity": [50, 65],
+      "tips": "Drain fields completely. Harvest when 80-85% grains are golden."
+    }
+  },
+  "Wheat": {
+    "Germination": {
+      "temp": [12, 20],
+      "rainfall": [5, 15],
+      "humidity": [50, 70],
+      "tips": "Plant in well-drained soil. Treat seeds against diseases."
+    },
+    "Seedling": {
+      "temp": [15, 22],
+      "rainfall": [5, 10],
+      "humidity": [45, 65],
+      "tips": "Apply phosphorus. Protect from frost damage."
+    },
+    "Tillering": {
+      "temp": [15, 22],
+      "rainfall": [5, 10],
+      "humidity": [40, 65],
+      "tips": "Apply nitrogen. Control weeds through cultivation."
+    },
+    "Stem Extension": {
+      "temp": [15, 20],
+      "rainfall": [0, 5],
+      "humidity": [40, 60],
+      "tips": "Support stem growth. Watch for lodging signs."
+    },
+    "Booting": {
+      "temp": [15, 20],
+      "rainfall": [0, 5],
+      "humidity": [40, 60],
+      "tips": "Critical growth stage. Avoid water stress."
+    },
+    "Heading": {
+      "temp": [15, 20],
+      "rainfall": [0, 5],
+      "humidity": [40, 60],
+      "tips": "Protect from hail damage. Monitor for head diseases."
+    },
+    "Flowering": {
+      "temp": [15, 20],
+      "rainfall": [0, 5],
+      "humidity": [40, 60],
+      "tips": "Avoid rain during flowering. Frost sensitive period."
+    },
+    "Grain Filling": {
+      "temp": [18, 25],
+      "rainfall": [0, 5],
+      "humidity": [35, 55],
+      "tips": "Dry conditions ideal. Watch for rust and mildew."
+    },
+    "Maturity": {
+      "temp": [20, 28],
+      "rainfall": [0, 2],
+      "humidity": [30, 45],
+      "tips": "Harvest when moisture <15%. Store in dry conditions."
+    }
+  },
+  "Potato": {
+    "Sprouting": {
+      "temp": [10, 15],
+      "rainfall": [5, 10],
+      "humidity": [60, 80],
+      "tips": "Use certified seed potatoes. Pre-sprout in light."
+    },
+    "Vegetative Growth": {
+      "temp": [15, 20],
+      "rainfall": [10, 15],
+      "humidity": [65, 85],
+      "tips": "Hill soil around plants. Control Colorado potato beetle."
+    },
+    "Tuber Initiation": {
+      "temp": [15, 18],
+      "rainfall": [5, 10],
+      "humidity": [70, 85],
+      "tips": "Maintain consistent moisture. Apply potassium."
+    },
+    "Tuber Growth": {
+      "temp": [16, 20],
+      "rainfall": [5, 10],
+      "humidity": [65, 80],
+      "tips": "Regular irrigation. Watch for late blight."
+    },
+    "Tuber Bulking": {
+      "temp": [16, 20],
+      "rainfall": [5, 10],
+      "humidity": [65, 80],
+      "tips": "Maximize tuber size. Avoid temperature fluctuations."
+    },
+    "Maturation": {
+      "temp": [15, 20],
+      "rainfall": [0, 5],
+      "humidity": [50, 65],
+      "tips": "Stop irrigation. Allow skins to harden before harvest."
+    },
+    "Senescence": {
+      "temp": [12, 18],
+      "rainfall": [0, 2],
+      "humidity": [40, 55],
+      "tips": "Vines should die back naturally. Harvest 2 weeks after vine death."
+    }
+  },
+  "Onion": {
+    "Germination": {
+      "temp": [15, 25],
+      "rainfall": [5, 10],
+      "humidity": [60, 75],
+      "tips": "Plant shallow (1/2 inch deep). Keep soil consistently moist."
+    },
+    "Leaf Development": {
+      "temp": [18, 28],
+      "rainfall": [5, 10],
+      "humidity": [55, 70],
+      "tips": "Apply nitrogen fertilizer. Control thrips and onion maggots."
+    },
+    "Bulb Formation": {
+      "temp": [20, 30],
+      "rainfall": [0, 5],
+      "humidity": [50, 65],
+      "tips": "Reduce watering. Too much moisture causes bulb rot."
+    },
+    "Bulb Swelling": {
+      "temp": [25, 35],
+      "rainfall": [0, 2],
+      "humidity": [45, 60],
+      "tips": "Dry conditions ideal. Stop irrigation for proper curing."
+    },
+    "Maturation": {
+      "temp": [25, 35],
+      "rainfall": [0, 0],
+      "humidity": [40, 55],
+      "tips": "Neck tissues soften. Tops fall over naturally."
+    },
+    "Curing": {
+      "temp": [25, 35],
+      "rainfall": [0, 0],
+      "humidity": [30, 50],
+      "tips": "Harvest on dry days. Cure in well-ventilated area for 2-3 weeks."
+    }
+  }
+}
