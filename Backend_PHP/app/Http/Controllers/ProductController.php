@@ -1,3 +1,4 @@
+<!-- this is the controller section -->
 <?php
 
 namespace App\Http\Controllers;
